@@ -1,0 +1,298 @@
+/* ====== CSS VARIABLES (LIGHT & DARK) ====== */
+:root {
+  --bg: #f5f7fb;
+  --surface: #ffffff;
+  --text: #0f172a;            /* slate-900 */
+  --muted: #64748b;           /* slate-500 */
+  --border: #e6eaf2;
+  --shadow: 0 6px 20px rgba(0, 0, 0, 0.06);
+
+  --primary: #2563eb;         /* blue-600 */
+  --primary-ghost: #e8f0ff;
+
+  --tag-work-bg: #e8f1ff;     /* blue-50 */
+  --tag-work-fg: #3760d9;     /* blue-600 */
+  --tag-health-bg: #e9f9f1;   /* green-50 */
+  --tag-health-fg: #16a34a;   /* green-600 */
+
+  --prio-high-bg: #ffecec;
+  --prio-high-fg: #ef4444;
+  --prio-mid-bg: #fff4df;
+  --prio-mid-fg: #f59e0b;
+  --prio-low-bg: #e9f9f1;
+  --prio-low-fg: #22c55e;
+
+  --radius: 14px;
+}
+
+/* Optional dark mode (toggled from JS) */
+.dark {
+  --bg: #0b1220;
+  --surface: #0f172a;
+  --text: #e5e7eb;
+  --muted: #94a3b8;
+  --border: #1f2937;
+  --shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+
+  --primary-ghost: rgba(37, 99, 235, 0.15);
+
+  --tag-work-bg: rgba(59, 130, 246, 0.15);
+  --tag-work-fg: #93c5fd;
+  --tag-health-bg: rgba(16, 185, 129, 0.15);
+  --tag-health-fg: #86efac;
+
+  --prio-high-bg: rgba(239, 68, 68, 0.18);
+  --prio-high-fg: #fca5a5;
+  --prio-mid-bg: rgba(245, 158, 11, 0.18);
+  --prio-mid-fg: #fcd34d;
+  --prio-low-bg: rgba(34, 197, 94, 0.18);
+  --prio-low-fg: #86efac;
+}
+
+/* ====== PAGE SCAFFOLD ====== */
+* { box-sizing: border-box; }
+html, body {
+  height: 100%;
+}
+body {
+  margin: 0;
+  font: 14px/1.4 system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+/* ====== CONTAINER & HEADER ====== */
+.task-container {
+  max-width: 1050px;
+  margin: 28px auto;
+  padding: 0 18px;
+}
+
+.task-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.task-header h2 {
+  margin: 0;
+  font-size: 24px;
+  letter-spacing: 0.2px;
+}
+
+.view-switch {
+  display: flex;
+  gap: 10px;
+}
+
+.view-switch button {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  padding: 9px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: transform .04s ease, background .15s ease, color .15s ease, border-color .15s ease;
+  box-shadow: 0 0 0 rgba(0,0,0,0);
+}
+.view-switch button:hover { transform: translateY(-1px); }
+.view-switch button.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+}
+.view-switch .settings-btn { font-size: 16px; }
+.view-switch .add-btn {
+  background: var(--primary-ghost);
+  border-color: var(--primary-ghost);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+/* ====== SECTIONS (CARDS) ====== */
+.task-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin: 14px 0;
+  overflow: clip; /* keep rounded corners on children */
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  user-select: none;
+}
+.section-header h3 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  margin: 0;
+}
+.section-header h3::before {
+  content: "▾";
+  display: inline-block;
+  transform-origin: center;
+  transition: transform .15s ease;
+  color: var(--muted);
+}
+.task-section.collapsed .section-header h3::before {
+  transform: rotate(-90deg);
+}
+
+/* ====== TABLE-ISH LAYOUT ====== */
+.task-table {
+  padding: 8px 10px 14px;
+}
+.task-table-header {
+  display: grid;
+  grid-template-columns: 1.6fr 0.8fr 0.8fr 0.6fr;
+  gap: 10px;
+  padding: 8px 8px 12px;
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+
+.task-row {
+  display: grid;
+  grid-template-columns: 1.6fr 0.8fr 0.8fr 0.6fr;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 8px;
+  border-radius: 10px;
+  transition: background .15s ease;
+}
+.task-row:hover { background: rgba(148, 163, 184, 0.10); } /* slate-400/10 */
+.task-row + .task-row { margin-top: 2px; }
+
+/* Task cell */
+.task-row label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.task-row input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--primary);
+}
+
+/* Due date cell */
+.due-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text);
+  font-weight: 600;
+}
+.due-date::before {
+  content: "📅";
+  font-size: 15px;
+  opacity: 0.9;
+}
+
+/* Tags & Priority pills */
+.tag, .priority {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 12px;
+  width: max-content;
+}
+
+/* Tag themes */
+.tag.work   { background: var(--tag-work-bg);   color: var(--tag-work-fg); }
+.tag.health { background: var(--tag-health-bg); color: var(--tag-health-fg); }
+
+/* Priority themes */
+.priority.high { background: var(--prio-high-bg); color: var(--prio-high-fg); }
+.priority.mid  { background: var(--prio-mid-bg);  color: var(--prio-mid-fg); }
+.priority.low  { background: var(--prio-low-bg);  color: var(--prio-low-fg); }
+
+/* Collapsed content */
+.task-section.collapsed .task-table { display: none; }
+
+/* ====== BOARD VIEW (responsive columns) ====== */
+.task-container.board-view {
+  /* nothing here; children handle layout */
+}
+.task-container.board-view .task-header .view-switch button.active { /* keep active style */ }
+.task-container.board-view .task-section {
+  display: flex;
+  flex-direction: column;
+  height: auto;
+}
+.task-container.board-view .task-table-header {
+  display: none; /* board style usually hides list headers */
+}
+.task-container.board-view .task-table {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.task-container.board-view .task-row {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  border: 1px dashed var(--border);
+  margin: 0;
+  padding: 10px;
+}
+
+/* Put sections side-by-side in board view */
+.task-container.board-view .task-section {
+  width: 100%;
+}
+@media (min-width: 960px) {
+  .task-container.board-view {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+  }
+  .task-container.board-view .task-section {
+    margin: 0;
+  }
+}
+
+/* ====== LIST VIEW RESPONSIVENESS ====== */
+@media (max-width: 720px) {
+  .task-table-header { display: none; }
+  .task-row {
+    grid-template-columns: 1fr 1fr;
+    grid-template-areas:
+      "task task"
+      "date tags"
+      "priority priority";
+    row-gap: 8px;
+  }
+  .task-row label { grid-area: task; }
+  .task-row .due-date { grid-area: date; }
+  .task-row .tag { grid-area: tags; }
+  .task-row .priority { grid-area: priority; }
+}
+
+/* Utility: subtle three-dot menu placeholder on each section (optional) */
+.section-header::after {
+  content: "⋯";
+  margin-left: auto;
+  color: var(--muted);
+  font-weight: 700;
+}
