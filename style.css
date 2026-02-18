@@ -296,3 +296,50 @@ body {
   color: var(--muted);
   font-weight: 700;
 }
+
+/* ====== MODAL / OVERLAY ====== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: none; /* hidden by default */
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.35);
+  z-index: 1200;
+  padding: 20px;
+}
+.modal-overlay.active {
+  display: flex;
+}
+.modal {
+  width: 100%;
+  max-width: 480px;
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 18px;
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+.modal h3 {
+  margin: 0 0 12px 0;
+  font-size: 18px;
+}
+.modal form { display: flex; flex-direction: column; gap: 10px; }
+.modal-row { display: flex; flex-direction: column; font-size: 13px; }
+.modal-row input[type="text"], .modal-row select {
+  margin-top: 6px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 6px; }
+.modal-actions button { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--border); cursor: pointer; }
+.modal-actions #submitAdd { background: var(--primary); color: #fff; border-color: var(--primary); }
+.modal-actions #cancelAdd { background: transparent; color: var(--muted); }
+
+@media (max-width: 520px) {
+  .modal { max-width: 100%; }
+}
