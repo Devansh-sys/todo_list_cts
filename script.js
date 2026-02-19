@@ -1,4 +1,4 @@
-/* script.js */
+/* script.js - Date-aware tasks with In Progress status, compact actions, and revert from Done */
 "use strict";
 
 /* ====== SESSION STORAGE KEYS ====== */
@@ -12,15 +12,61 @@ const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 const byId = (id) => document.getElementById(id);
 
+function startOfDay(d) {
+  const nd = new Date(d);
+  nd.setHours(0, 0, 0, 0);
+  return nd;
+}
+function isoDate(d) {
+  const nd = startOfDay(d);
+  const y = nd.getFullYear();
+  const m = String(nd.getMonth() + 1).padStart(2, "0");
+  const day = String(nd.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+function parseIsoDate(str) {
+  // "YYYY-MM-DD" -> Date at local midnight
+  const [y, m, d] = (str || "").split("-").map(Number);
+  if (!y || !m || !d) return null;
+  const dt = new Date(y, m - 1, d);
+  dt.setHours(0, 0, 0, 0);
+  return dt;
+}
+function daysBetween(a, b) {
+  // a, b are Date; returns integer day delta (a - b in days)
+  const ms = startOfDay(a) - startOfDay(b);
+  return Math.round(ms / (1000 * 60 * 60 * 24));
+}
+
 /* ====== TASK LIST STORAGE ====== */
 let tasks = [];
 let taskIdCounter = 0;
+
+/* ====== DATE / DAY HEADER ====== */
+let currentOffset = 0; // days from today (0 = today)
+function today() {
+  return startOfDay(new Date());
+}
+function dateWithOffset(offset) {
+  const d = today();
+  d.setDate(d.getDate() + Number(offset));
+  return d;
+}
+function getSelectedDateStr() {
+  return isoDate(dateWithOffset(currentOffset));
+}
 
 /* ====== LOAD / SAVE TASKS ====== */
 function loadFromSession() {
   try {
     const savedTasks = sessionStorage.getItem(SS_KEYS.tasks);
     tasks = savedTasks ? JSON.parse(savedTasks) : [];
+
+    // Migrate legacy tasks that may not have `date`
+    const todayStr = isoDate(new Date());
+    tasks.forEach((t) => {
+      if (!t.date) t.date = todayStr; // ---- Date-aware rendering (migration) ----
+    });
 
     const savedCounter = sessionStorage.getItem(SS_KEYS.counter);
     if (savedCounter !== null) {
@@ -74,20 +120,10 @@ function ensureInProgressSection() {
     if (title === "Done") doneSection = sec;
   });
 
-  // If already present, ensure correct order (optional)
   if (inProgSection) {
-    // If order is wrong and both exist, re-insert in the right position
-    if (toDoSection && doneSection) {
-      const toDoIndex = sections.indexOf(toDoSection);
-      const inProgIndex = sections.indexOf(inProgSection);
-      const doneIndex = sections.indexOf(doneSection);
-      const shouldBeIndex = toDoIndex + 1;
-      if (!(inProgIndex === shouldBeIndex && doneIndex > inProgIndex)) {
-        // Move In Progress after To Do
-        toDoSection.insertAdjacentElement("afterend", inProgSection);
-      }
-    }
-    return; // already exists
+    // Ensure order To Do -> In Progress -> Done
+    if (toDoSection) toDoSection.insertAdjacentElement("afterend", inProgSection);
+    return;
   }
 
   // Create the "In Progress" section
@@ -108,28 +144,24 @@ function ensureInProgressSection() {
     </div>
   `;
 
-  // Insert it between "To Do" and "Done" if they exist
   if (toDoSection) {
     toDoSection.insertAdjacentElement("afterend", sec);
   } else if (doneSection) {
     doneSection.insertAdjacentElement("beforebegin", sec);
   } else {
-    // fallback: append at the end if neither found
     container.appendChild(sec);
   }
 }
 
 /**
  * Ensure the Status dropdown exists in the Add/Edit Task form.
- * If not present, inject it above the timeline fields.
  * ---- In Progress task status ----
  */
 function ensureStatusSelectInForm() {
   const taskForm = byId("taskForm");
   if (!taskForm) return;
 
-  let statusSelect = byId("taskStatus");
-  if (statusSelect) return; // already present
+  if (byId("taskStatus")) return;
 
   const wrapper = document.createElement("div");
   wrapper.className = "form-row";
@@ -144,12 +176,37 @@ function ensureStatusSelectInForm() {
     </div>
   `;
 
-  // Insert before the timeline fields row if available
   const timelineRow = $("#taskStartTime")?.closest(".form-row");
   if (timelineRow) {
     timelineRow.insertAdjacentElement("beforebegin", wrapper);
   } else {
-    // else append near the end
+    taskForm.insertBefore(wrapper, $(".form-actions", taskForm));
+  }
+}
+
+/**
+ * Ensure a Date input exists in the Add/Edit Task form.
+ * ---- Date-aware rendering ----
+ */
+function ensureDateInputInForm() {
+  const taskForm = byId("taskForm");
+  if (!taskForm) return;
+  if (byId("taskDate")) return;
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "form-row";
+  wrapper.innerHTML = `
+    <div class="form-group">
+      <label for="taskDate">Date *</label>
+      <input type="date" id="taskDate" name="date" required />
+    </div>
+  `;
+
+  // Put it before the timeline fields for clarity
+  const timelineRow = $("#taskStartTime")?.closest(".form-row");
+  if (timelineRow) {
+    timelineRow.insertAdjacentElement("beforebegin", wrapper);
+  } else {
     taskForm.insertBefore(wrapper, $(".form-actions", taskForm));
   }
 }
@@ -206,10 +263,12 @@ function initDarkMode() {
   });
 }
 
-/* ====== PROGRESS (slider-like) ====== */
+/* ====== PROGRESS (selected day only) ====== */
 function updateProgress() {
-  const total = tasks.length;
-  const done = tasks.filter((t) => t.section === "Done").length;
+  const selected = getSelectedDateStr();
+  const dayTasks = tasks.filter((t) => t.date === selected);
+  const total = dayTasks.length;
+  const done = dayTasks.filter((t) => t.section === "Done").length;
   const percent = total > 0 ? Math.round((done / total) * 100) : 0;
 
   const percentEl = byId("progressPercent");
@@ -218,9 +277,10 @@ function updateProgress() {
   const barEl = $(".progress-bar");
 
   if (percentEl) percentEl.textContent = `${percent}%`;
-  if (countsEl) countsEl.textContent = `${done} of ${total} completed today`;
+  if (countsEl) countsEl.textContent = `${done} of ${total} completed`;
   if (fillEl) fillEl.style.width = `${percent}%`;
   if (barEl) barEl.setAttribute("aria-valuenow", String(percent));
+  if (barEl) barEl.setAttribute("aria-label", "Selected day's progress");
 }
 
 /* ====== ADD / EDIT TASK ====== */
@@ -233,9 +293,10 @@ function resetForm() {
   const end = byId("taskEndTime");
   if (start) start.value = "";
   if (end) end.value = "";
-  // Default Status to "To Do"
   const statusSel = byId("taskStatus");
   if (statusSel) statusSel.value = "To Do";
+  const dateSel = byId("taskDate");
+  if (dateSel) dateSel.value = getSelectedDateStr(); // default to currently selected day
 }
 
 function initAddTask() {
@@ -248,8 +309,9 @@ function initAddTask() {
   const formTitle = byId("formTitle");
   const currentDateEl = byId("currentDate");
 
-  // Ensure Status field exists in the form (adds "In Progress")
-  ensureStatusSelectInForm(); // ---- In Progress task status ----
+  // Ensure new controls (Status + Date) exist
+  ensureStatusSelectInForm();     // ---- In Progress task status ----
+  ensureDateInputInForm();        // ---- Date-aware rendering ----
 
   const displayCurrentDate = () => {
     const options = {
@@ -258,13 +320,13 @@ function initAddTask() {
       month: "long",
       day: "numeric",
     };
-    const today = new Date().toLocaleDateString("en-US", options);
-    if (currentDateEl) currentDateEl.textContent = `Today: ${today}`;
+    const todayStr = new Date().toLocaleDateString("en-US", options);
+    if (currentDateEl) currentDateEl.textContent = `Today: ${todayStr}`;
   };
 
   addBtn?.addEventListener("click", () => {
     editingTaskId = null;
-    resetForm();
+    resetForm(); // sets date to selected day
     displayCurrentDate();
     if (formTitle) formTitle.textContent = "Add New Task";
     formContainer?.classList.remove("hidden");
@@ -289,14 +351,10 @@ function initAddTask() {
     const startTime = byId("taskStartTime")?.value || "";
     const endTime = byId("taskEndTime")?.value || "";
 
-    // Read Status from form; default if missing
     const statusSel = byId("taskStatus");
-    let chosenSection = "To Do";
-    if (statusSel) {
-      chosenSection = statusSel.value; // may be "To Do", "In Progress", "Done"
-    } else if (editingTaskId !== null) {
-      chosenSection = tasks.find((t) => t.id === editingTaskId)?.section || "To Do";
-    }
+    const dateSel = byId("taskDate");
+    const chosenSection = statusSel ? statusSel.value : "To Do";
+    const chosenDate = (dateSel && dateSel.value) ? dateSel.value : getSelectedDateStr();
 
     if (!title) {
       alert("Please enter a task title");
@@ -308,10 +366,14 @@ function initAddTask() {
       if (task) {
         const oldSection = task.section;
 
-        // If a task is completed (Done), we block editing (keep your original rule)
         if (oldSection === "Done") {
           alert("Completed tasks cannot be edited.");
           return;
+        }
+
+        // If moving into Done via form, remember where from
+        if (oldSection !== "Done" && chosenSection === "Done") {
+          task.previousSection = oldSection; // ---- revert support ----
         }
 
         task.title = title;
@@ -320,64 +382,35 @@ function initAddTask() {
         task.section = chosenSection; // ---- In Progress task status ----
         task.startTime = startTime;
         task.endTime = endTime;
+        task.date = chosenDate;       // ---- Date-aware rendering ----
+
         saveToSession();
-
-        const row = document.querySelector(`[data-task-id="${editingTaskId}"]`);
-        if (row) {
-          if (oldSection !== chosenSection) {
-            // Move to another section
-            const checkbox = $("input[type='checkbox']", row);
-            const isChecked = checkbox?.checked || false;
-            row.remove();
-
-            ensureInProgressSection(); // ensure target exists
-            const targetSectionEl = findSectionByTitle(chosenSection);
-            if (targetSectionEl) {
-              targetSectionEl.classList.remove("collapsed");
-              const header = $(".section-header", targetSectionEl);
-              header?.setAttribute("aria-expanded", "true");
-
-              const targetTable = $(".task-table", targetSectionEl);
-              const newRow = createTaskRow(task, chosenSection === "Done" ? true : isChecked);
-              targetTable.appendChild(newRow);
-            }
-          } else {
-            // Update content within the same section
-            updateTaskRow(row, task);
-          }
-        }
       }
     } else {
       // Add new task
       const newTask = {
         id: taskIdCounter++,
-        title: title,
-        due: "",
-        tag: tag,
-        prio: prio,
-        section: chosenSection, // ---- In Progress task status ----
-        previousSection: null,  // --previous section--
-        startTime: startTime,
-        endTime: endTime,
+        title,
+        due: "", // legacy, unused
+        tag,
+        prio,
+        section: chosenSection,       // ---- In Progress task status ----
+        previousSection: null,        // ---- revert support ----
+        startTime,
+        endTime,
+        date: chosenDate,             // ---- Date-aware rendering ----
       };
       tasks.push(newTask);
       saveToSession();
-
-      ensureInProgressSection(); // ensure target exists
-      const targetSectionEl = findSectionByTitle(chosenSection);
-      if (targetSectionEl) {
-        targetSectionEl.classList.remove("collapsed");
-        const header = $(".section-header", targetSectionEl);
-        header?.setAttribute("aria-expanded", "true");
-
-        const targetTable = $(".task-table", targetSectionEl);
-        const row = createTaskRow(newTask, chosenSection === "Done");
-        targetTable.appendChild(row);
-      }
     }
 
     closeForm();
     resetForm();
+
+    // If user added/edited for a different date, you can auto-jump the strip to that date (optional):
+    // currentOffset = daysBetween(parseIsoDate(chosenDate), today());
+
+    renderAllTasks();  // ---- Date-aware re-render ----
     updateProgress();
   });
 }
@@ -395,7 +428,6 @@ function formatClock12h(hhmm) {
   if (h === 0) h = 12;
   return m === 0 ? `${h}${suffix}` : `${h}:${String(m).padStart(2, "0")}${suffix}`;
 }
-
 function formatTimelineWindow(startTime, endTime) {
   const s = formatClock12h(startTime);
   const e = formatClock12h(endTime);
@@ -442,10 +474,13 @@ function escapeHtml(str) {
 
 /**
  * Build the inner HTML for a task row.
- * Shows "▶ In Progress" button ONLY when the task is in "To Do".
+ * - Compact "▶" button for To Do -> In Progress
+ * - ✏️ for Edit (hidden in Done)
+ * - 🗑️ for Delete
  * ---- In Progress task status ----
  */
-function buildRowHtml(task, isChecked) {
+function buildRowHtml(task) {
+  const isChecked = task.section === "Done";
   const timelineTxt = formatTimelineWindow(task.startTime, task.endTime);
   const showEdit = task.section !== "Done";
 
@@ -462,32 +497,17 @@ function buildRowHtml(task, isChecked) {
   `;
 }
 
-function createTaskRow(task, isChecked = false) {
+function createTaskRow(task) {
   const row = document.createElement("div");
   row.className = "task-row";
   row.setAttribute("data-task-id", task.id);
-  row.innerHTML = buildRowHtml(task, isChecked);
-  if (isChecked) {
-    const label = $("label", row);
-    if (label) {
-      label.style.opacity = "0.55";
-      label.style.textDecoration = "line-through";
-    }
+  row.innerHTML = buildRowHtml(task);
+  const label = $("label", row);
+  if (label && task.section === "Done") {
+    label.style.opacity = "0.55";
+    label.style.textDecoration = "line-through";
   }
   return row;
-}
-
-function updateTaskRow(row, task) {
-  const checkbox = $("input[type='checkbox']", row);
-  const isChecked = checkbox ? checkbox.checked : false;
-  row.innerHTML = buildRowHtml(task, isChecked);
-  if (isChecked) {
-    const label = $("label", row);
-    if (label) {
-      label.style.opacity = "0.55";
-      label.style.textDecoration = "line-through";
-    }
-  }
 }
 
 /* ====== SECTION / MOVE HELPERS ====== */
@@ -502,44 +522,14 @@ function findSectionByTitle(title) {
   return targetSectionEl;
 }
 
-function moveTaskToSection(taskId, task, targetSection, oldRow) {
-  task.section = targetSection; // ---- In Progress task status may be target ----
+function moveTaskToSection(taskId, task, targetSection) {
+  task.section = targetSection; // ---- In Progress / Done / To Do ----
   saveToSession();
-
-  // Ensure target section exists (esp. In Progress)
-  ensureInProgressSection();
-
-  const targetSectionEl = findSectionByTitle(targetSection);
-  if (!targetSectionEl) return;
-
-  // Remove from current
-  oldRow?.remove();
-
-  // Open target section if collapsed
-  targetSectionEl.classList.remove("collapsed");
-  const header = $(".section-header", targetSectionEl);
-  header?.setAttribute("aria-expanded", "true");
-
-  // Add to target
-  const targetTable = $(".task-table", targetSectionEl);
-  const newRow = document.createElement("div");
-  newRow.className = "task-row";
-  newRow.setAttribute("data-task-id", taskId);
-  const isChecked = targetSection === "Done";
-  newRow.innerHTML = buildRowHtml(task, isChecked);
-  if (isChecked) {
-    const label = $("label", newRow);
-    if (label) {
-      label.style.opacity = "0.55";
-      label.style.textDecoration = "line-through";
-    }
-  }
-  targetTable.appendChild(newRow);
-
+  renderAllTasks();  // ---- Date-aware re-render ----
   updateProgress();
 }
 
-/* ====== CHECKBOX BEHAVIOR (To Do <-> Done) ====== */
+/* ====== CHECKBOX BEHAVIOR (To Do / In Progress <-> Done) ====== */
 function initCheckboxes() {
   document.addEventListener("change", (e) => {
     if (e.target.matches('.task-row input[type="checkbox"]')) {
@@ -548,7 +538,7 @@ function initCheckboxes() {
       if (!row || !label) return;
 
       const taskId = parseInt(row.getAttribute("data-task-id"));
-      const task = tasks.find(t => t.id === taskId);
+      const task = tasks.find((t) => t.id === taskId);
       if (!task) return;
 
       const isChecked = e.target.checked;
@@ -558,14 +548,20 @@ function initCheckboxes() {
       label.style.textDecoration = isChecked ? "line-through" : "none";
 
       if (isChecked) {
-        // ➤ MOVING TO DONE → remember previous section
-        task.previousSection = task.section;
-        moveTaskToSection(taskId, task, "Done", row);
+        // ➤ MOVING TO DONE → remember previous section for proper revert
+        task.previousSection = task.section; // ---- revert support ----
+        moveTaskToSection(taskId, task, "Done");
       } else {
-        // ➤ UNCHECKED IN DONE → return to previous section
-        const revertSection = task.previousSection || "To Do";
-        task.previousSection = null;  // clear it
-        moveTaskToSection(taskId, task, revertSection, row);
+        // ➤ UNCHECKED
+        if (task.section === "Done") {
+          const revertSection = task.previousSection || "To Do";
+          task.previousSection = null;
+          moveTaskToSection(taskId, task, revertSection);
+        } else {
+          // If not in Done, do not force move to To Do (no-op)
+          renderAllTasks();
+          updateProgress();
+        }
       }
     }
   });
@@ -585,7 +581,7 @@ function initMoveToInProgress() {
       const task = tasks.find((t) => t.id === taskId);
       if (!task) return;
 
-      moveTaskToSection(taskId, task, "In Progress", row);
+      moveTaskToSection(taskId, task, "In Progress");
     }
   });
 }
@@ -606,6 +602,9 @@ function initEditTask() {
         return;
       }
 
+      ensureStatusSelectInForm();  // ---- In Progress task status ----
+      ensureDateInputInForm();     // ---- Date-aware rendering ----
+
       editingTaskId = taskId;
       byId("taskTitle").value = task.title || "";
       byId("taskTag").value = task.tag || "work";
@@ -613,10 +612,11 @@ function initEditTask() {
       byId("taskStartTime").value = task.startTime || "";
       byId("taskEndTime").value = task.endTime || "";
 
-      // Set Status in the form (will include "In Progress")
-      ensureStatusSelectInForm(); // ---- In Progress task status ----
       const statusSel = byId("taskStatus");
       if (statusSel) statusSel.value = task.section || "To Do";
+
+      const dateSel = byId("taskDate");
+      if (dateSel) dateSel.value = task.date || getSelectedDateStr();
 
       const formContainer = byId("addTaskForm");
       const formTitle = byId("formTitle");
@@ -639,29 +639,23 @@ function initDeleteTask() {
 
       tasks = tasks.filter((t) => t.id !== taskId);
       saveToSession();
-      row.remove();
+      renderAllTasks();  // ---- Date-aware re-render ----
       updateProgress();
     }
   });
 }
 
-/* ====== DISPLAY TODAY'S DATE ====== */
+/* ====== DISPLAY TODAY'S DATE (decorative) ====== */
 function displayTodayDate() {
   const todayDateEl = byId("todayDate");
   if (!todayDateEl) return;
 
   const options = { weekday: "long", year: "numeric", month: "long", day: "numeric" };
-  const today = new Date().toLocaleDateString("en-US", options);
-  todayDateEl.textContent = today;
+  const todayStr = new Date().toLocaleDateString("en-US", options);
+  todayDateEl.textContent = todayStr;
 }
 
-/* ====== DATE / DAY HEADER ====== */
-function dateWithOffset(offset) {
-  const d = new Date();
-  d.setDate(d.getDate() + Number(offset));
-  return d;
-}
-
+/* ====== DATE HEADER TEXT ====== */
 function updateDateDisplay(date) {
   const dayEl = document.getElementById("dateDay");
   const dateEl = document.getElementById("dateFull");
@@ -678,13 +672,7 @@ function updateDateDisplay(date) {
   if (dateEl) dateEl.textContent = dateStr;
 }
 
-function initDateHeader() {
-  updateDateDisplay(new Date());
-}
-
-/* ====== WEEK STRIP ====== */
-let currentOffset = 0;
-
+/* ====== WEEK STRIP (date navigation) ====== */
 function renderWeekStrip(offset) {
   const strip = document.getElementById("weekStrip");
   if (!strip) return;
@@ -699,6 +687,8 @@ function renderWeekStrip(offset) {
   prevBtn.addEventListener("click", () => {
     currentOffset -= 1;
     renderWeekStrip(currentOffset);
+    renderAllTasks();  // ---- Date-aware re-render ----
+    updateProgress();
   });
   strip.appendChild(prevBtn);
 
@@ -720,6 +710,8 @@ function renderWeekStrip(offset) {
       currentOffset = dayOffset;
       renderWeekStrip(currentOffset);
       updateDateDisplay(dateWithOffset(currentOffset));
+      renderAllTasks();  // ---- Date-aware re-render ----
+      updateProgress();
     });
 
     strip.appendChild(item);
@@ -734,6 +726,8 @@ function renderWeekStrip(offset) {
   nextBtn.addEventListener("click", () => {
     currentOffset += 1;
     renderWeekStrip(currentOffset);
+    renderAllTasks();  // ---- Date-aware re-render ----
+    updateProgress();
   });
   strip.appendChild(nextBtn);
 
@@ -741,49 +735,51 @@ function renderWeekStrip(offset) {
 }
 
 function initWeekStrip() {
-  currentOffset = 0;
+  currentOffset = 0; // today
   renderWeekStrip(currentOffset);
 }
 
-/* ====== RENDER ALL TASKS ====== */
+/* ====== RENDER ALL TASKS (for selected date only) ====== */
 function renderAllTasks() {
   // Ensure "In Progress" section exists before rendering
   ensureInProgressSection(); // ---- In Progress task status ----
 
-  // Clear all section containers
+  // Clear all section containers and re-add headers
   const sections = $$(".task-section");
   sections.forEach((sec) => {
     const table = $(".task-table", sec);
-    if (table) table.innerHTML = `
-      <div class="task-table-header">
-        <span>Task</span>
-        <span>Timeline</span>
-        <span>Task Tags</span>
-        <span>Priority</span>
-        <span>Actions</span>
-      </div>
-    `;
-  });
-
-  // Re-add tasks into their sections
-  tasks.forEach((task) => {
-    const targetSectionEl = findSectionByTitle(task.section);
-    if (targetSectionEl) {
-      const targetTable = $(".task-table", targetSectionEl);
-      const row = createTaskRow(task, task.section === "Done");
-      targetTable.appendChild(row);
+    if (table) {
+      table.innerHTML = `
+        <div class="task-table-header">
+          <span>Task</span>
+          <span>Timeline</span>
+          <span>Task Tags</span>
+          <span>Priority</span>
+          <span>Actions</span>
+        </div>
+      `;
     }
   });
 
-  updateProgress();
+  const selected = getSelectedDateStr();
+  const dayTasks = tasks.filter((t) => t.date === selected);
+
+  dayTasks.forEach((task) => {
+    const targetSectionEl = findSectionByTitle(task.section);
+    if (targetSectionEl) {
+      const targetTable = $(".task-table", targetSectionEl);
+      const row = createTaskRow(task);
+      targetTable.appendChild(row);
+    }
+  });
 }
 
 /* ====== BOOT ====== */
 document.addEventListener("DOMContentLoaded", () => {
   loadInitialTasks();
-  // Ensure UI structure for new status
   ensureInProgressSection();      // ---- In Progress task status ----
   ensureStatusSelectInForm();     // ---- In Progress task status ----
+  ensureDateInputInForm();        // ---- Date-aware rendering ----
 
   displayTodayDate();
   initCollapsibles();
@@ -794,8 +790,8 @@ document.addEventListener("DOMContentLoaded", () => {
   initMoveToInProgress();         // ---- In Progress task status ----
   initEditTask();
   initDeleteTask();
+  initWeekStrip();                // sets currentOffset=0 and header
+
+  renderAllTasks();               // ---- Date-aware re-render ----
   updateProgress();
-  initDateHeader();
-  initWeekStrip();
-  renderAllTasks();
 });
