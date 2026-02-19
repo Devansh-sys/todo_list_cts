@@ -3,7 +3,6 @@ const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 const byId = (id) => document.getElementById(id);
 
-
 /* ====== TASK LIST STORAGE ====== */
 let tasks = [];
 let taskIdCounter = 0;
@@ -15,7 +14,7 @@ function loadInitialTasks() {
 
 /* ====== COLLAPSIBLE SECTIONS ====== */
 function initCollapsibles() {
-  $$(".task-section .section-header").forEach((header) => {
+  $$(".task-section .section-header").forEach(header => {
     // Set ARIA
     const section = header.closest(".task-section");
     header.setAttribute("role", "button");
@@ -69,6 +68,23 @@ function initDarkMode() {
   });
 }
 
+/* ====== PROGRESS (slider-like) ====== */
+function updateProgress() {
+  const total = tasks.length;
+  const done = tasks.filter(t => t.section === "Done").length;
+  const percent = total > 0 ? Math.round((done / total) * 100) : 0;
+
+  const percentEl = byId("progressPercent");
+  const countsEl = byId("progressCounts");
+  const fillEl = byId("progressFill");
+  const barEl = $(".progress-bar");
+
+  if (percentEl) percentEl.textContent = `${percent}%`;
+  if (countsEl) countsEl.textContent = `${done} of ${total} completed today`;
+  if (fillEl) fillEl.style.width = `${percent}%`;
+  if (barEl) barEl.setAttribute("aria-valuenow", String(percent));
+}
+
 /* ====== ADD TASK (+ button and Form) ====== */
 let editingTaskId = null;
 
@@ -96,7 +112,6 @@ function initAddTask() {
     displayCurrentDate();
     formTitle.textContent = "Add New Task";
     formContainer.classList.remove("hidden");
-  
   });
 
   // Close form
@@ -112,10 +127,15 @@ function initAddTask() {
   // Handle form submission
   taskForm?.addEventListener("submit", (e) => {
     e.preventDefault();
-    
+
     const title = byId("taskTitle").value.trim();
     const tag = byId("taskTag").value;
     const prio = byId("taskPriority").value;
+
+    // NEW: Start/End times
+    const startTime = byId("taskStartTime").value; // "HH:MM" or ""
+    const endTime = byId("taskEndTime").value;     // "HH:MM" or ""
+
     const section = editingTaskId !== null ? tasks.find(t => t.id === editingTaskId)?.section : "To Do";
     const due = ""; // No due date needed
 
@@ -133,9 +153,11 @@ function initAddTask() {
         task.tag = tag;
         task.prio = prio;
         task.section = section;
+        task.startTime = startTime; // NEW
+        task.endTime = endTime;     // NEW
 
         // Re-render task
-        const row = $(`[data-task-id="${editingTaskId}"]`);
+        const row = document.querySelector(`[data-task-id="${editingTaskId}"]`);
         if (row) {
           if (oldSection !== section) {
             // Task moved to different section
@@ -145,7 +167,7 @@ function initAddTask() {
 
             const sections = $$(".task-section");
             let targetSectionEl = null;
-            
+
             sections.forEach(sec => {
               const heading = $("h3", sec);
               if (heading && heading.textContent.trim() === section) {
@@ -176,14 +198,16 @@ function initAddTask() {
         due: due,
         tag: tag,
         prio: prio,
-        section: section
+        section: section,
+        startTime: startTime, // NEW
+        endTime: endTime      // NEW
       };
       tasks.push(newTask);
 
       // Add to target section
       const sections = $$(".task-section");
       let targetSectionEl = null;
-      
+
       sections.forEach(sec => {
         const heading = $("h3", sec);
         if (heading && heading.textContent.trim() === section) {
@@ -204,55 +228,45 @@ function initAddTask() {
 
     closeForm();
     resetForm();
+    updateProgress(); // UPDATE progress after add/edit
   });
 }
 
 function resetForm() {
   byId("taskForm").reset();
   byId("taskTitle").focus();
+  // Clear timeline fields explicitly
+  const start = byId("taskStartTime");
+  const end = byId("taskEndTime");
+  if (start) start.value = "";
+  if (end) end.value = "";
 }
 
-function createTaskRow(task, isChecked = false) {
-  const row = document.createElement("div");
-  row.className = "task-row";
-  row.setAttribute("data-task-id", task.id);
-  row.innerHTML = `
-    <label><input type="checkbox" ${isChecked ? 'checked' : ''}> ${escapeHtml(task.title)}</label>
-    <span class="tag ${clsTag(task.tag)}">${labelTag(task.tag)}</span>
-    <span class="priority ${clsPrio(task.prio)}">${labelPrio(task.prio)}</span>
-    <div class="task-actions">
-      <button class="edit-btn" title="Edit">Edit</button>
-      <button class="delete-btn" title="Delete">Delete</button>
-    </div>
-  `;
-  if (isChecked) {
-    const label = $('label', row);
-    label.style.opacity = "0.55";
-    label.style.textDecoration = "line-through";
-  }
-  return row;
+/* ====== TIMELINE HELPERS ====== */
+// Format "HH:MM" (24h) into "5pm", "5:30pm" etc.
+function formatClock12h(hhmm) {
+  if (!hhmm) return "";
+  const [hStr, mStr] = hhmm.split(":");
+  let h = parseInt(hStr, 10);
+  const m = parseInt(mStr || "0", 10);
+  if (Number.isNaN(h)) return "";
+
+  const suffix = h >= 12 ? "pm" : "am";
+  h = h % 12;
+  if (h === 0) h = 12;
+  return m === 0 ? `${h}${suffix}` : `${h}:${String(m).padStart(2, "0")}${suffix}`;
 }
 
-function updateTaskRow(row, task) {
-  const checkbox = $("input[type='checkbox']", row);
-  const isChecked = checkbox.checked;
-  row.innerHTML = `
-    <label><input type="checkbox" ${isChecked ? 'checked' : ''}> ${escapeHtml(task.title)}</label>
-    <span class="tag ${clsTag(task.tag)}">${labelTag(task.tag)}</span>
-    <span class="priority ${clsPrio(task.prio)}">${labelPrio(task.prio)}</span>
-    <div class="task-actions">
-      <button class="edit-btn" title="Edit">Edit</button>
-      <button class="delete-btn" title="Delete">Delete</button>
-    </div>
-  `;
-  if (isChecked) {
-    const label = $('label', row);
-    label.style.opacity = "0.55";
-    label.style.textDecoration = "line-through";
-  }
+function formatTimelineWindow(startTime, endTime) {
+  const s = formatClock12h(startTime);
+  const e = formatClock12h(endTime);
+  if (s && e) return `⏰ ${s}–${e}`;
+  if (s && !e) return `⏰ ${s}`;
+  if (!s && e) return `⏰ —–${e}`;
+  return "";
 }
 
-// Helpers for add-task
+/* ====== ROW RENDERING ====== */
 function clsTag(t) {
   t = String(t || "").toLowerCase();
   if (t.startsWith("work")) return "work";
@@ -278,17 +292,51 @@ function labelPrio(p) {
   return "Mid";
 }
 function escapeHtml(str) {
-  return String(str).replace(
-    /[&<>"']/g,
-    (m) =>
-      ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        '"': "&quot;",
-        "'": "&#039;",
-      }[m])
-  );
+  return String(str).replace(/[&<>"']/g, m => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"
+  }[m]));
+}
+
+function buildRowHtml(task, isChecked) {
+  const timelineTxt = formatTimelineWindow(task.startTime, task.endTime);
+
+  // Hide Edit button if task is in Done
+  const showEdit = task.section !== "Done";
+
+  return `
+    <label><input type="checkbox" ${isChecked ? 'checked' : ''}> ${escapeHtml(task.title)}</label>
+    <span class="timeline">${timelineTxt ? escapeHtml(timelineTxt) : ""}</span>
+    <span class="tag ${clsTag(task.tag)}">${labelTag(task.tag)}</span>
+    <span class="priority ${clsPrio(task.prio)}">${labelPrio(task.prio)}</span>
+    <div class="task-actions">
+      ${showEdit ? `<button class="edit-btn" title="Edit">Edit</button>` : ``}
+      <button class="delete-btn" title="Delete">Delete</button>
+    </div>
+  `;
+}
+
+function createTaskRow(task, isChecked = false) {
+  const row = document.createElement("div");
+  row.className = "task-row";
+  row.setAttribute("data-task-id", task.id);
+  row.innerHTML = buildRowHtml(task, isChecked);
+  if (isChecked) {
+    const label = $('label', row);
+    label.style.opacity = "0.55";
+    label.style.textDecoration = "line-through";
+  }
+  return row;
+}
+
+function updateTaskRow(row, task) {
+  const checkbox = $("input[type='checkbox']", row);
+  const isChecked = checkbox ? checkbox.checked : false;
+  row.innerHTML = buildRowHtml(task, isChecked);
+  if (isChecked) {
+    const label = $('label', row);
+    label.style.opacity = "0.55";
+    label.style.textDecoration = "line-through";
+  }
 }
 
 /* ====== CHECKBOX BEHAVIOR (move tasks to Done/To Do) ====== */
@@ -298,15 +346,15 @@ function initCheckboxes() {
       const row = e.target.closest(".task-row");
       const label = e.target.closest("label");
       if (!row || !label) return;
-      
+
       const taskId = parseInt(row.getAttribute("data-task-id"));
       const task = tasks.find(t => t.id === taskId);
       if (!task) return;
-      
+
       // Update visual appearance
       label.style.opacity = e.target.checked ? "0.55" : "1";
       label.style.textDecoration = e.target.checked ? "line-through" : "none";
-      
+
       // Move task to Done or back to To Do
       const targetSection = e.target.checked ? "Done" : "To Do";
       moveTaskToSection(taskId, task, targetSection, row);
@@ -317,49 +365,43 @@ function initCheckboxes() {
 function moveTaskToSection(taskId, task, targetSection, oldRow) {
   // Update task in storage
   task.section = targetSection;
-  
+
   // Find target section by heading text
   const sections = $$(".task-section");
   let targetSectionEl = null;
-  
+
   sections.forEach(section => {
     const heading = $("h3", section);
     if (heading && heading.textContent.trim() === targetSection) {
       targetSectionEl = section;
     }
   });
-  
+
   if (!targetSectionEl) return;
-  
+
   // Remove from current row
   oldRow.remove();
-  
+
   // Open target section if collapsed
   targetSectionEl.classList.remove("collapsed");
   const header = $(".section-header", targetSectionEl);
   header?.setAttribute("aria-expanded", "true");
-  
+
   // Add to target section
   const targetTable = $(".task-table", targetSectionEl);
   const newRow = document.createElement("div");
   newRow.className = "task-row";
   newRow.setAttribute("data-task-id", taskId);
   const isChecked = targetSection === "Done";
-  newRow.innerHTML = `
-    <label><input type="checkbox" ${isChecked ? 'checked' : ''}> ${escapeHtml(task.title)}</label>
-    <span class="tag ${clsTag(task.tag)}">${labelTag(task.tag)}</span>
-    <span class="priority ${clsPrio(task.prio)}">${labelPrio(task.prio)}</span>
-    <div class="task-actions">
-      <button class="edit-btn" title="Edit">Edit</button>
-      <button class="delete-btn" title="Delete">Delete</button>
-    </div>
-  `;
+  newRow.innerHTML = buildRowHtml(task, isChecked);
   if (isChecked) {
     const label = $('label', newRow);
     label.style.opacity = "0.55";
     label.style.textDecoration = "line-through";
   }
   targetTable.appendChild(newRow);
+
+  updateProgress(); // UPDATE progress after move
 }
 
 /* ====== EDIT TASK ====== */
@@ -368,17 +410,27 @@ function initEditTask() {
     if (e.target.matches(".edit-btn")) {
       const row = e.target.closest(".task-row");
       if (!row) return;
-      
+
       const taskId = parseInt(row.getAttribute("data-task-id"));
       const task = tasks.find(t => t.id === taskId);
       if (!task) return;
-      
+
+      // Block edit for completed tasks (extra guard)
+      if (task.section === "Done") {
+        alert("Completed tasks cannot be edited.");
+        return;
+      }
+
       // Populate form with task data
       editingTaskId = taskId;
-      byId("taskTitle").value = task.title;
-      byId("taskTag").value = task.tag;
-      byId("taskPriority").value = task.prio;
-      
+      byId("taskTitle").value = task.title || "";
+      byId("taskTag").value = task.tag || "work";
+      byId("taskPriority").value = task.prio || "mid";
+
+      // Timeline fields
+      byId("taskStartTime").value = task.startTime || "";
+      byId("taskEndTime").value = task.endTime || "";
+
       // Show form with edit title
       const formContainer = byId("addTaskForm");
       const formTitle = byId("formTitle");
@@ -395,19 +447,30 @@ function initDeleteTask() {
     if (e.target.matches(".delete-btn")) {
       const row = e.target.closest(".task-row");
       if (!row) return;
-      
+
       const taskId = parseInt(row.getAttribute("data-task-id"));
       if (!confirm("Are you sure you want to delete this task?")) return;
-      
+
       // Remove from storage
       tasks = tasks.filter(t => t.id !== taskId);
-      
+
       // Remove from DOM
       row.remove();
+
+      updateProgress(); // UPDATE progress after delete
     }
   });
 }
 
+// /* ====== DISPLAY TODAY'S DATE ====== */
+// function displayTodayDate() {
+//   const todayDateEl = byId("todayDate");
+//   if (!todayDateEl) return;
+
+//   const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+//   const today = new Date().toLocaleDateString('en-US', options);
+//   todayDateEl.textContent = today;
+// }
 /* ====== DISPLAY TODAY'S DATE ====== */
 function displayTodayDate() {
   const todayDateEl = byId("todayDate");
@@ -511,11 +574,10 @@ function initWeekStrip() {
   currentOffset = 0;
   renderWeekStrip(currentOffset);
 }
-
 /* ====== BOOT ====== */
 document.addEventListener("DOMContentLoaded", () => {
   loadInitialTasks();
-  // displayTodayDate();
+  displayTodayDate();
   initCollapsibles();
   initViewSwitch();
   initDarkMode();
@@ -523,7 +585,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initCheckboxes();
   initEditTask();
   initDeleteTask();
-
+  updateProgress(); // initial
   initDateHeader();
   initWeekStrip();
 });
