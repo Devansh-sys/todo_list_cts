@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>To Do List</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<script src="script.js"></script>
+<body>
+  <div class="task-container">
+
+    <!-- Header -->
+    <header class="task-header">
+      <h2>My Tasks</h2>
+
+      <div class="view-switch">
+        <button class="settings-btn">🌙 Dark</button>
+        <button class="add-btn">Add</button>
+      </div>
+    </header>
+<!-- Progress (slider-like) -->
+<div class="progress-area" id="progressArea">
+  <div class="progress-summary">
+    <strong id="progressPercent">0%</strong>
+    <span id="progressCounts">0 of 0 completed today</span>
+  </div>
+  <div
+    class="progress-bar"
+    aria-label="Today's progress"
+    role="progressbar"
+    aria-valuemin="0"
+    aria-valuemax="100"
+    aria-valuenow="0"
+  >
+    <div class="progress-fill" id="progressFill" style="width:0%"></div>
+  </div>
+  <!-- Today's Date -->
+    <div class="today-date" id="todayDate"></div>
+</div>
+    
+
+    <!-- Add/Edit Task Form -->
+    <div class="form-container hidden" id="addTaskForm">
+      <div class="form-overlay" id="formOverlay"></div>
+      <form id="taskForm" class="task-form">
+        <div class="form-header">
+          <h3 id="formTitle">Add New Task</h3>
+          <button type="button" class="close-btn" id="closeFormBtn">&times;</button>
+        </div>
+        <div class="current-date" id="currentDate"></div>
+
+        <div class="form-group">
+          <label for="taskTitle">Task Title *</label>
+          <input type="text" id="taskTitle" name="title" placeholder="Enter task title" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="taskTag">Tag *</label>
+            <select id="taskTag" name="tag" required>
+              <option value="work">Work</option>
+              <option value="health">Health</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="taskPriority">Priority *</label>
+            <select id="taskPriority" name="priority" required>
+              <option value="high">High</option>
+              <option value="mid">Mid</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Timeline fields: Start → End -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="taskStartTime">Start Time</label>
+            <input type="time" id="taskStartTime" name="startTime" placeholder="HH:MM" required>
+          </div>
+          <div class="form-group">
+            <label for="taskEndTime">End Time</label>
+            <input type="time" id="taskEndTime" name="endTime" placeholder="HH:MM" required>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button type="button" class="btn-cancel" id="cancelBtn">Cancel</button>
+          <button type="submit" class="btn-submit">Save Task</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="date-header">
+        <div class="date-left">
+          <div class="date-text">
+            <span class="day" id="dateDay">Day</span>
+            <span class="date" id="dateFull">Date</span>
+          </div>
+        </div>
+
+        <div class="week-strip" id="weekStrip" aria-label="Week selector">
+          <!-- JS will render a 7-day horizontal strip here -->
+        </div>
+      </div>
+
+    <!-- To Do Section -->
+    <section class="task-section">
+      <div class="section-header">
+        <h3>To Do</h3>
+      </div>
+
+      <div class="task-table">
+        <div class="task-table-header">
+          <span>Task</span>
+          <span>Timeline</span>
+          <span>Task Tags</span>
+          <span>Priority</span>
+          <span>Actions</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- In Progress Section (kept commented as in your original) 
+    <section class="task-section">
+      <div class="section-header">
+        <h3>In Progress</h3>
+      </div>
+
+      <div class="task-table">
+        <div class="task-table-header">
+          <span>Task</span>
+          <span>Due Date</span>
+          <span>Task Tags</span>
+          <span>Priority</span>
+        </div>
+
+        <div class="task-row">
+          <label><input type="checkbox"> Do back exercises</label>
+          <span class="due-date">📅 Nov 17</span>
+          <span class="tag health">Health</span>
+          <span class="priority mid">Mid</span>
+        </div>
+
+        <div class="task-row">
+          <label><input type="checkbox"> Integrate Payment Gateway</label>
+          <span class="due-date">📅 Nov 17</span>
+          <span class="tag work">Work</span>
+          <span class="priority low">Low</span>
+        </div>
+
+      </div>
+    </section> -->
+
+    <!-- Done Section -->
+    <section class="task-section">
+      <div class="section-header">
+        <h3>Done</h3>
+      </div>
+
+      <div class="task-table">
+        <div class="task-table-header">
+          <span>Task</span>
+          <span>Timeline</span>
+          <span>Task Tags</span>
+          <span>Priority</span>
+          <span>Actions</span>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  
+</body>
+</html>
