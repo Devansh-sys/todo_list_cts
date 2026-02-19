@@ -883,8 +883,47 @@ function renderAllTasks() {
   });
 }
 
+function calculateTotalTime() {
+  const selected = getSelectedDateStr();
+  const dayTasks = tasks.filter(
+    (t) => t.date === selected && t.section === "To Do",
+  );
+
+  let totalMinutes = 0;
+
+  dayTasks.forEach((task) => {
+    if (task.startTime && task.endTime) {
+      const [sh, sm] = task.startTime.split(":").map(Number);
+      const [eh, em] = task.endTime.split(":").map(Number);
+      const start = sh * 60 + sm;
+      const end = eh * 60 + em;
+      if (end > start) {
+        totalMinutes += end - start;
+      }
+    }
+  });
+
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  const resultText =
+    totalMinutes > 0
+      ? `Total time: ${hours}h ${minutes}m`
+      : "No valid timelines";
+
+  const resultEl = document.getElementById("calcResult");
+  if (resultEl) resultEl.textContent = resultText;
+}
+
+// document.addEventListener("DOMContentLoaded", () => {
+  
+// });
+
 /* ====== BOOT ====== */
 document.addEventListener("DOMContentLoaded", () => {
+  const calcBtn = document.getElementById("calcTimeBtn");
+  if (calcBtn) {
+    calcBtn.addEventListener("click", calculateTotalTime);
+  }
   loadInitialTasks();
   ensureInProgressSection();      // ---- In Progress task status ----
   ensureStatusSelectInForm();     // ---- In Progress task status ----
