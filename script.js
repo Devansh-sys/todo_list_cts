@@ -70,56 +70,26 @@ function initAddTask() {
   const addBtn = $(".view-switch .add-btn");
   const sections = $$(".task-section");
 
-  const modal = $("#addTaskModal");
-  const form = $("#addTaskForm");
-  const cancel = $("#cancelAdd");
-
-  if (!addBtn || !modal || !form) return;
-
-  const openModal = () => {
-    modal.classList.add("active");
-    modal.setAttribute("aria-hidden", "false");
-    const first = form.querySelector('[name="title"]');
-    first?.focus();
-  };
-
-  const closeModal = () => {
-    modal.classList.remove("active");
-    modal.setAttribute("aria-hidden", "true");
-    form.reset();
-    addBtn.focus();
-  };
-
-  addBtn.addEventListener("click", (e) => {
-    e.preventDefault();
-    openModal();
-  });
-
-  cancel.addEventListener("click", () => closeModal());
-
-  // Close when clicking backdrop
-  modal.addEventListener("click", (e) => {
-    if (e.target === modal) closeModal();
-  });
-
-  // Close on Escape
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && modal.classList.contains("active")) closeModal();
-  });
-
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const fd = new FormData(form);
-    const title = fd.get("title");
+  addBtn?.addEventListener("click", () => {
+    // Quick, non-blocking prompts (simple UX). Replace with a form if needed.
+    const title = prompt("Task title:", "New task");
     if (!title) return;
-    const due = fd.get("due") || "—";
-    const tag = fd.get("tag") || "work";
-    const prio = fd.get("prio") || "mid";
-    const index = Math.min(Math.max(parseInt(fd.get("section") || "0", 10), 0), 2);
 
-    const targetSection = sections[index] || sections[0];
+    const due = prompt("Due date label (e.g., Nov 20):", "Nov 20") || "—";
+    const tag = prompt("Tag (work/health/other):", "work") || "work";
+    const prio = prompt("Priority (high/mid/low):", "mid") || "mid";
+
+    // Choose a section to add into
+    const sectionNames = ["To Do", "In Progress", "Done"];
+    const pick = prompt(`Add to section:\n1) To Do\n2) In Progress\n3) Done`, "1");
+    const index = Math.min(Math.max(parseInt(pick || "1", 10) - 1, 0), 2);
+
+    const targetSection = sections[index];
+    if (!targetSection) return;
+
     const table = $(".task-table", targetSection);
 
+    // Build the row
     const row = document.createElement("div");
     row.className = "task-row";
     row.innerHTML = `
@@ -130,11 +100,10 @@ function initAddTask() {
     `;
 
     table.appendChild(row);
+    // If the section was collapsed, open it
     targetSection.classList.remove("collapsed");
     const header = $(".section-header", targetSection);
     header?.setAttribute("aria-expanded", "true");
-
-    closeModal();
   });
 }
 
