@@ -412,7 +412,7 @@ function displayTodayDate() {
 /* ====== BOOT ====== */
 document.addEventListener("DOMContentLoaded", () => {
   loadInitialTasks();
-  displayTodayDate();
+
   initCollapsibles();
   initViewSwitch();
   initDarkMode();

@@ -1,0 +1,81 @@
+/* Center the whole content block on the page */
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: flex;
+  flex-direction: column;      /* stack all children vertically: header -> h3 -> article */
+  align-items: center;         /* center each row horizontally */
+  justify-content: center;     /* center the whole block vertically */
+  background: #f5f7fb;
+  font-family: Arial, Helvetica, sans-serif;
+  color: #1f2937;
+  gap: 16px;                   /* space between rows (h1, h3, info box) */
+  padding: 24px;               /* breathing room on small screens */
+  box-sizing: border-box;
+}
+
+/* Main H1 */
+.main-heading {
+  margin: 0;                   /* remove default header margins */
+  text-align: center;
+}
+
+.main-heading h1 {
+  margin: 0;
+  font-size: 32px;
+  line-height: 1.2;
+}
+
+/* H3 subheading */
+.second-header {
+  margin: 0;
+  font-weight: 500;
+  color: #4b5563;              /* softer tone */
+  text-align: center;
+}
+
+/* Paragraph box */
+.info {
+  max-width: 650px;
+  width: min(90vw, 650px);
+  background: #ffffff;
+  padding: 24px;
+  border-radius: 12px;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 5px 18px rgba(0,0,0,0.1);
+  text-align: left;            /* left for readability */
+  box-sizing: border-box;
+}
+
+.info p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+/* Optional: adjust spacing on very small screens */
+@media (max-width: 480px) {
+  .main-heading h1 { font-size: 26px; }
+  .second-header   { font-size: 16px; }
+}
+.btn {
+    display: inline-block;
+    margin-top: 16px;
+    padding: 12px 22px;
+    background-color: #10b981;     /* green button */
+    color: white;
+    text-decoration: none;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 8px;
+    transition: 0.25s ease;
+}
+
+/* Hover effect */
+.btn:hover {
+    background-color: #059669;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+}
