@@ -1,4 +1,5 @@
-/* script.js - Date-aware tasks with In Progress status, compact actions, and revert from Done */
+/* script.js - Date-aware tasks with In Progress status, compact actions, revert from Done,
+   and per-section filters by Task Tag and Priority (no search bar) */
 "use strict";
 
 /* ====== SESSION STORAGE KEYS ====== */
@@ -23,19 +24,6 @@ function isoDate(d) {
   const m = String(nd.getMonth() + 1).padStart(2, "0");
   const day = String(nd.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
-}
-function parseIsoDate(str) {
-  // "YYYY-MM-DD" -> Date at local midnight
-  const [y, m, d] = (str || "").split("-").map(Number);
-  if (!y || !m || !d) return null;
-  const dt = new Date(y, m - 1, d);
-  dt.setHours(0, 0, 0, 0);
-  return dt;
-}
-function daysBetween(a, b) {
-  // a, b are Date; returns integer day delta (a - b in days)
-  const ms = startOfDay(a) - startOfDay(b);
-  return Math.round(ms / (1000 * 60 * 60 * 24));
 }
 
 /* ====== TASK LIST STORAGE ====== */
@@ -62,7 +50,7 @@ function loadFromSession() {
     const savedTasks = sessionStorage.getItem(SS_KEYS.tasks);
     tasks = savedTasks ? JSON.parse(savedTasks) : [];
 
-    // Migrate legacy tasks that may not have `date`
+    // Migrate legacy tasks (add date if missing)
     const todayStr = isoDate(new Date());
     tasks.forEach((t) => {
       if (!t.date) t.date = todayStr; // ---- Date-aware rendering (migration) ----
@@ -99,8 +87,7 @@ function loadInitialTasks() {
 /* ====== LAYOUT HELPERS (auto ensure sections / form fields) ====== */
 
 /**
- * Automatically ensure the "In Progress" section exists in the DOM,
- * and that it appears BETWEEN "To Do" and "Done".
+ * Ensure the "In Progress" section exists and sits between To Do and Done.
  * ---- In Progress task status ----
  */
 function ensureInProgressSection() {
@@ -121,7 +108,6 @@ function ensureInProgressSection() {
   });
 
   if (inProgSection) {
-    // Ensure order To Do -> In Progress -> Done
     if (toDoSection) toDoSection.insertAdjacentElement("afterend", inProgSection);
     return;
   }
@@ -133,6 +119,7 @@ function ensureInProgressSection() {
     <div class="section-header">
       <h3>In Progress</h3>
     </div>
+    <!-- Filters bar will be injected here -->
     <div class="task-table">
       <div class="task-table-header">
         <span>Task</span>
@@ -154,7 +141,7 @@ function ensureInProgressSection() {
 }
 
 /**
- * Ensure the Status dropdown exists in the Add/Edit Task form.
+ * Ensure the Status dropdown exists in Add/Edit Task form.
  * ---- In Progress task status ----
  */
 function ensureStatusSelectInForm() {
@@ -185,7 +172,7 @@ function ensureStatusSelectInForm() {
 }
 
 /**
- * Ensure a Date input exists in the Add/Edit Task form.
+ * Ensure a Date input exists in Add/Edit Task form.
  * ---- Date-aware rendering ----
  */
 function ensureDateInputInForm() {
@@ -202,7 +189,6 @@ function ensureDateInputInForm() {
     </div>
   `;
 
-  // Put it before the timeline fields for clarity
   const timelineRow = $("#taskStartTime")?.closest(".form-row");
   if (timelineRow) {
     timelineRow.insertAdjacentElement("beforebegin", wrapper);
@@ -224,7 +210,11 @@ function initCollapsibles() {
       header.setAttribute("aria-expanded", String(!collapsed));
     };
 
-    header.addEventListener("click", toggle);
+    header.addEventListener("click", (e) => {
+      // Ignore clicks on filter toggle button inside header
+      if ((e.target).closest?.(".filter-toggle-btn")) return;
+      toggle();
+    });
     header.addEventListener("keydown", (e) => {
       if (e.key === "Enter" || e.key === " ") {
         e.preventDefault();
@@ -406,10 +396,6 @@ function initAddTask() {
 
     closeForm();
     resetForm();
-
-    // If user added/edited for a different date, you can auto-jump the strip to that date (optional):
-    // currentOffset = daysBetween(parseIsoDate(chosenDate), today());
-
     renderAllTasks();  // ---- Date-aware re-render ----
     updateProgress();
   });
@@ -442,13 +428,13 @@ function clsTag(t) {
   t = String(t || "").toLowerCase();
   if (t.startsWith("work")) return "work";
   if (t.startsWith("health")) return "health";
-  return "work";
+  return "other"; // default
 }
 function labelTag(t) {
   t = String(t || "").toLowerCase();
   if (t.startsWith("work")) return "Work";
   if (t.startsWith("health")) return "Health";
-  return t ? t.charAt(0).toUpperCase() + t.slice(1) : "Other";
+  return "Other";
 }
 function clsPrio(p) {
   p = String(p || "").toLowerCase();
@@ -558,7 +544,7 @@ function initCheckboxes() {
           task.previousSection = null;
           moveTaskToSection(taskId, task, revertSection);
         } else {
-          // If not in Done, do not force move to To Do (no-op)
+          // If not in Done, no forced move
           renderAllTasks();
           updateProgress();
         }
@@ -739,10 +725,130 @@ function initWeekStrip() {
   renderWeekStrip(currentOffset);
 }
 
+/* ====== SECTION FILTERS (by tag & priority, per section, per selected date) ======
+   Adds a compact "🔎" Filter button to each section header.
+   Clicking toggles a mini bar with two dropdowns:
+   - Tag: All / Work / Health / Other
+   - Priority: All / High / Mid / Low
+   The filter applies ONLY within that section and ONLY for the selected date.
+================================================================= */
+const sectionFilters = {}; // e.g., { "To Do": { tag:"all", prio:"all" }, ... }
+
+function defaultFilterState() {
+  return { tag: "all", prio: "all" };
+}
+function getSectionTitle(sectionEl) {
+  const h3 = $("h3", sectionEl);
+  return h3 ? h3.textContent.trim() : "";
+}
+function ensureFilterUIForSection(sectionEl) {
+  const title = getSectionTitle(sectionEl);
+  if (!title) return;
+
+  const header = $(".section-header", sectionEl);
+  if (!header) return;
+
+  // Add a tiny toggle button into the header (if missing)
+  if (!header.querySelector(".filter-toggle-btn")) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "filter-toggle-btn";
+    btn.title = "Filter by tag & priority";
+    btn.textContent = "🔎Filter";
+    header.appendChild(btn);
+
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation(); // don't toggle collapse
+      const bar = sectionEl.querySelector(".section-filters");
+      if (bar) bar.classList.toggle("hidden");
+    });
+  }
+
+  // Create the filter bar (if missing) with Tag & Priority + Clear
+  if (!sectionEl.querySelector(".section-filters")) {
+    const bar = document.createElement("div");
+    bar.className = "section-filters hidden";
+    bar.innerHTML = `
+      <div class="filter-row">
+        <label class="filter-label">Tag:</label>
+        <select class="filter-tag" title="Task Tag">
+          <option value="all">All</option>
+          <option value="work">Work</option>
+          <option value="health">Health</option>
+          <option value="other">Other</option>
+        </select>
+
+        <label class="filter-label">Priority:</label>
+        <select class="filter-priority" title="Priority">
+          <option value="all">All</option>
+          <option value="high">High</option>
+          <option value="mid">Mid</option>
+          <option value="low">Low</option>
+        </select>
+
+        <button type="button" class="filter-clear-btn" title="Clear">✖</button>
+      </div>
+    `;
+    header.insertAdjacentElement("afterend", bar);
+
+    if (!sectionFilters[title]) sectionFilters[title] = defaultFilterState();
+
+    const tagSel = bar.querySelector(".filter-tag");
+    const prioSel = bar.querySelector(".filter-priority");
+    const clr = bar.querySelector(".filter-clear-btn");
+
+    // Set initial UI from state
+    tagSel.value = sectionFilters[title].tag || "all";
+    prioSel.value = sectionFilters[title].prio || "all";
+
+    tagSel.addEventListener("change", () => {
+      sectionFilters[title].tag = tagSel.value;
+      renderAllTasks();
+      updateProgress();
+    });
+    prioSel.addEventListener("change", () => {
+      sectionFilters[title].prio = prioSel.value;
+      renderAllTasks();
+      updateProgress();
+    });
+    clr.addEventListener("click", () => {
+      sectionFilters[title] = defaultFilterState();
+      tagSel.value = "all";
+      prioSel.value = "all";
+      renderAllTasks();
+      updateProgress();
+    });
+  }
+}
+function initSectionFilters() {
+  $$(".task-section").forEach(ensureFilterUIForSection);
+}
+
+/* Helper: check if a task passes the section's active filters */
+function taskPassesSectionFilter(task) {
+  const f = sectionFilters[task.section] || defaultFilterState();
+
+  // Tag filter
+  if (f.tag !== "all") {
+    const taskTag = String(task.tag || "").toLowerCase();
+    if (taskTag !== f.tag) return false;
+  }
+
+  // Priority filter
+  if (f.prio !== "all") {
+    const tp = String(task.prio || "").toLowerCase();
+    if (tp !== f.prio) return false;
+  }
+
+  return true;
+}
+
 /* ====== RENDER ALL TASKS (for selected date only) ====== */
 function renderAllTasks() {
   // Ensure "In Progress" section exists before rendering
   ensureInProgressSection(); // ---- In Progress task status ----
+  // Ensure filter UIs exist (in case sections were injected)
+  initSectionFilters();      // ---- Section Filters (by tag & priority) ----
 
   // Clear all section containers and re-add headers
   const sections = $$(".task-section");
@@ -765,6 +871,9 @@ function renderAllTasks() {
   const dayTasks = tasks.filter((t) => t.date === selected);
 
   dayTasks.forEach((task) => {
+    // Apply per-section filters before adding
+    if (!taskPassesSectionFilter(task)) return;
+
     const targetSectionEl = findSectionByTitle(task.section);
     if (targetSectionEl) {
       const targetTable = $(".task-table", targetSectionEl);
@@ -791,6 +900,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initEditTask();
   initDeleteTask();
   initWeekStrip();                // sets currentOffset=0 and header
+  initSectionFilters();           // ---- Section Filters (by tag & priority) ----
 
   renderAllTasks();               // ---- Date-aware re-render ----
   updateProgress();

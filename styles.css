@@ -776,3 +776,43 @@ body {
   color: var(--muted);
   font-weight: 700;
 }
+
+
+
+
+
+
+/* Section filters */
+.section-filters {
+  padding: 8px 10px;
+  background: var(--filter-bg, #f6f6f6);
+  border-top: 1px solid #e5e5e5;
+}
+.section-filters.hidden { display: none; }
+.section-filters .filter-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.section-filters .filter-text {
+  flex: 1 1 auto;
+  min-width: 140px;
+  padding: 6px 8px;
+}
+.section-filters .filter-priority,
+.section-filters .filter-clear-btn {
+  padding: 6px 8px;
+}
+.filter-toggle-btn {
+  margin-left: auto;
+  font-size: 14px;
+  line-height: 1;
+  padding: 4px 8px;
+  border: 1px solid #ccc;
+  background: #eee;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.filter-toggle-btn:hover {
+  background: #e2e2e2;
+}
