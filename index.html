@@ -88,6 +88,21 @@
             <input type="time" id="taskEndTime" name="endTime" placeholder="HH:MM" required>
           </div>
         </div>
+        
+        <!-- task status-->
+
+        <div class="form-row">
+  <div class="form-group">
+    <label for="taskStatus">Status *</label>
+    <select id="taskStatus" name="status" required>
+      <option value="To Do">To Do</option>
+      <option value="In Progress">In Progress</option>
+      <option value="Done">Done</option>
+    </select>
+  </div>
+</div>
+ <!------>
+
 
         <div class="form-actions">
           <button type="button" class="btn-cancel" id="cancelBtn">Cancel</button>
@@ -156,6 +171,25 @@
 
       </div>
     </section> -->
+
+    <section class="task-section">
+  <div class="section-header">
+    <h3>In Progress</h3>
+  </div>
+
+  <div class="task-table">
+    <div class="task-table-header">
+      <span>Task</span>
+      <span>Timeline</span>
+      <span>Task Tags</span>
+      <span>Priority</span>
+      <span>Actions</span>
+    </div>
+  </div>
+</section>
+
+
+
 
     <!-- Done Section -->
     <section class="task-section">

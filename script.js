@@ -1,72 +1,11 @@
-/* ====== SESSION STORAGE KEYS (NEW) ====== */
+/* script.js */
+"use strict";
+
+/* ====== SESSION STORAGE KEYS ====== */
 const SS_KEYS = {
   tasks: "tasklist.tasks",
-  counter: "tasklist.counter"
+  counter: "tasklist.counter",
 };
-
-function loadFromSession() { // NEW
-  try {
-    const savedTasks = sessionStorage.getItem(SS_KEYS.tasks);
-    tasks = savedTasks ? JSON.parse(savedTasks) : [];
-
-    // Restore ID counter; if missing, compute from existing tasks
-    const savedCounter = sessionStorage.getItem(SS_KEYS.counter);
-    if (savedCounter !== null) {
-      taskIdCounter = parseInt(savedCounter, 10) || 0;
-    } else {
-      taskIdCounter = tasks.length
-        ? Math.max(...tasks.map(t => Number(t.id) || 0)) + 1
-        : 0;
-    }
-  } catch (err) {
-    console.warn("Failed to load session tasks:", err);
-    tasks = [];
-    taskIdCounter = 0;
-  }
-}
-
-function saveToSession() { // NEW
-  try {
-    sessionStorage.setItem(SS_KEYS.tasks, JSON.stringify(tasks));
-    sessionStorage.setItem(SS_KEYS.counter, String(taskIdCounter));
-  } catch (err) {
-    console.warn("Failed to save session tasks:", err);
-  }
-}
-
-
-/* ====== RENDER ALL TASKS (NEW) ====== */
-function renderAllTasks() {
-  // Clear all section containers
-  const sections = $$(".task-section");
-  sections.forEach(sec => {
-    const table = $(".task-table", sec);
-    if (table) table.innerHTML = "";
-  });
-
-  // Re-add tasks into their sections
-  tasks.forEach(task => {
-    const sections = $$(".task-section");
-    let targetSectionEl = null;
-
-    sections.forEach(sec => {
-      const heading = $("h3", sec);
-      if (heading && heading.textContent.trim() === task.section) {
-        targetSectionEl = sec;
-      }
-    });
-
-    if (targetSectionEl) {
-      const targetTable = $(".task-table", targetSectionEl);
-      const row = createTaskRow(task, task.section === "Done");
-      targetTable.appendChild(row);
-    }
-  });
-
-  updateProgress();
-}
-
-
 
 /* ====== UTILS ====== */
 const $ = (sel, ctx = document) => ctx.querySelector(sel);
@@ -77,15 +16,147 @@ const byId = (id) => document.getElementById(id);
 let tasks = [];
 let taskIdCounter = 0;
 
+/* ====== LOAD / SAVE TASKS ====== */
+function loadFromSession() {
+  try {
+    const savedTasks = sessionStorage.getItem(SS_KEYS.tasks);
+    tasks = savedTasks ? JSON.parse(savedTasks) : [];
+
+    const savedCounter = sessionStorage.getItem(SS_KEYS.counter);
+    if (savedCounter !== null) {
+      taskIdCounter = parseInt(savedCounter, 10) || 0;
+    } else {
+      taskIdCounter = tasks.length
+        ? Math.max(...tasks.map((t) => Number(t.id) || 0)) + 1
+        : 0;
+    }
+  } catch (err) {
+    console.warn("Failed to load session tasks:", err);
+    tasks = [];
+    taskIdCounter = 0;
+  }
+}
+
+function saveToSession() {
+  try {
+    sessionStorage.setItem(SS_KEYS.tasks, JSON.stringify(tasks));
+    sessionStorage.setItem(SS_KEYS.counter, String(taskIdCounter));
+  } catch (err) {
+    console.warn("Failed to save session tasks:", err);
+  }
+}
+
 function loadInitialTasks() {
-  // No initial tasks - start with empty lists
-   loadFromSession();
+  loadFromSession();
+}
+
+/* ====== LAYOUT HELPERS (auto ensure sections / form fields) ====== */
+
+/**
+ * Automatically ensure the "In Progress" section exists in the DOM,
+ * and that it appears BETWEEN "To Do" and "Done".
+ * ---- In Progress task status ----
+ */
+function ensureInProgressSection() {
+  const container = $(".task-container");
+  if (!container) return;
+
+  const sections = $$(".task-section");
+  let toDoSection = null;
+  let inProgSection = null;
+  let doneSection = null;
+
+  sections.forEach((sec) => {
+    const h3 = $("h3", sec);
+    const title = h3 ? h3.textContent.trim() : "";
+    if (title === "To Do") toDoSection = sec;
+    if (title === "In Progress") inProgSection = sec;
+    if (title === "Done") doneSection = sec;
+  });
+
+  // If already present, ensure correct order (optional)
+  if (inProgSection) {
+    // If order is wrong and both exist, re-insert in the right position
+    if (toDoSection && doneSection) {
+      const toDoIndex = sections.indexOf(toDoSection);
+      const inProgIndex = sections.indexOf(inProgSection);
+      const doneIndex = sections.indexOf(doneSection);
+      const shouldBeIndex = toDoIndex + 1;
+      if (!(inProgIndex === shouldBeIndex && doneIndex > inProgIndex)) {
+        // Move In Progress after To Do
+        toDoSection.insertAdjacentElement("afterend", inProgSection);
+      }
+    }
+    return; // already exists
+  }
+
+  // Create the "In Progress" section
+  const sec = document.createElement("section");
+  sec.className = "task-section";
+  sec.innerHTML = `
+    <div class="section-header">
+      <h3>In Progress</h3>
+    </div>
+    <div class="task-table">
+      <div class="task-table-header">
+        <span>Task</span>
+        <span>Timeline</span>
+        <span>Task Tags</span>
+        <span>Priority</span>
+        <span>Actions</span>
+      </div>
+    </div>
+  `;
+
+  // Insert it between "To Do" and "Done" if they exist
+  if (toDoSection) {
+    toDoSection.insertAdjacentElement("afterend", sec);
+  } else if (doneSection) {
+    doneSection.insertAdjacentElement("beforebegin", sec);
+  } else {
+    // fallback: append at the end if neither found
+    container.appendChild(sec);
+  }
+}
+
+/**
+ * Ensure the Status dropdown exists in the Add/Edit Task form.
+ * If not present, inject it above the timeline fields.
+ * ---- In Progress task status ----
+ */
+function ensureStatusSelectInForm() {
+  const taskForm = byId("taskForm");
+  if (!taskForm) return;
+
+  let statusSelect = byId("taskStatus");
+  if (statusSelect) return; // already present
+
+  const wrapper = document.createElement("div");
+  wrapper.className = "form-row";
+  wrapper.innerHTML = `
+    <div class="form-group">
+      <label for="taskStatus">Status *</label>
+      <select id="taskStatus" name="status" required>
+        <option value="To Do">To Do</option>
+        <option value="In Progress">In Progress</option> <!-- In Progress task status -->
+        <option value="Done">Done</option>
+      </select>
+    </div>
+  `;
+
+  // Insert before the timeline fields row if available
+  const timelineRow = $("#taskStartTime")?.closest(".form-row");
+  if (timelineRow) {
+    timelineRow.insertAdjacentElement("beforebegin", wrapper);
+  } else {
+    // else append near the end
+    taskForm.insertBefore(wrapper, $(".form-actions", taskForm));
+  }
 }
 
 /* ====== COLLAPSIBLE SECTIONS ====== */
 function initCollapsibles() {
-  $$(".task-section .section-header").forEach(header => {
-    // Set ARIA
+  $$(".task-section .section-header").forEach((header) => {
     const section = header.closest(".task-section");
     header.setAttribute("role", "button");
     header.setAttribute("tabindex", "0");
@@ -106,23 +177,20 @@ function initCollapsibles() {
   });
 }
 
-/* ====== VIEW SWITCH (List <-> Board) ====== */
+/* ====== VIEW SWITCH (List only) ====== */
 function initViewSwitch() {
   const container = $(".task-container");
-  // Remove board view toggle - keep only list view
-  container.classList.remove("board-view");
+  container?.classList.remove("board-view");
 }
 
-/* ====== DARK MODE TOGGLE (⚙ button) ====== */
+/* ====== DARK MODE TOGGLE ====== */
 function initDarkMode() {
   const settingsBtn = $(".view-switch .settings-btn");
   if (!settingsBtn) return;
 
-  // Restore preference
   const pref = localStorage.getItem("task-ui-theme");
   if (pref === "dark") document.documentElement.classList.add("dark");
 
-  // Update button text to show opposite mode
   const updateButtonText = () => {
     const isDark = document.documentElement.classList.contains("dark");
     settingsBtn.textContent = isDark ? "☀️ Light" : "🌙 Dark";
@@ -141,7 +209,7 @@ function initDarkMode() {
 /* ====== PROGRESS (slider-like) ====== */
 function updateProgress() {
   const total = tasks.length;
-  const done = tasks.filter(t => t.section === "Done").length;
+  const done = tasks.filter((t) => t.section === "Done").length;
   const percent = total > 0 ? Math.round((done / total) * 100) : 0;
 
   const percentEl = byId("progressPercent");
@@ -155,8 +223,20 @@ function updateProgress() {
   if (barEl) barEl.setAttribute("aria-valuenow", String(percent));
 }
 
-/* ====== ADD TASK (+ button and Form) ====== */
+/* ====== ADD / EDIT TASK ====== */
 let editingTaskId = null;
+
+function resetForm() {
+  byId("taskForm")?.reset();
+  byId("taskTitle")?.focus();
+  const start = byId("taskStartTime");
+  const end = byId("taskEndTime");
+  if (start) start.value = "";
+  if (end) end.value = "";
+  // Default Status to "To Do"
+  const statusSel = byId("taskStatus");
+  if (statusSel) statusSel.value = "To Do";
+}
 
 function initAddTask() {
   const addBtn = $(".view-switch .add-btn");
@@ -168,25 +248,30 @@ function initAddTask() {
   const formTitle = byId("formTitle");
   const currentDateEl = byId("currentDate");
 
-  // Display current date
+  // Ensure Status field exists in the form (adds "In Progress")
+  ensureStatusSelectInForm(); // ---- In Progress task status ----
+
   const displayCurrentDate = () => {
-    const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-    const today = new Date().toLocaleDateString('en-US', options);
-    currentDateEl.textContent = `Today: ${today}`;
+    const options = {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    };
+    const today = new Date().toLocaleDateString("en-US", options);
+    if (currentDateEl) currentDateEl.textContent = `Today: ${today}`;
   };
 
-  // Open form
   addBtn?.addEventListener("click", () => {
     editingTaskId = null;
     resetForm();
     displayCurrentDate();
-    formTitle.textContent = "Add New Task";
-    formContainer.classList.remove("hidden");
+    if (formTitle) formTitle.textContent = "Add New Task";
+    formContainer?.classList.remove("hidden");
   });
 
-  // Close form
   const closeForm = () => {
-    formContainer.classList.add("hidden");
+    formContainer?.classList.add("hidden");
     editingTaskId = null;
   };
 
@@ -194,20 +279,24 @@ function initAddTask() {
   cancelBtn?.addEventListener("click", closeForm);
   formOverlay?.addEventListener("click", closeForm);
 
-  // Handle form submission
   taskForm?.addEventListener("submit", (e) => {
     e.preventDefault();
 
-    const title = byId("taskTitle").value.trim();
-    const tag = byId("taskTag").value;
-    const prio = byId("taskPriority").value;
+    const title = byId("taskTitle")?.value.trim();
+    const tag = byId("taskTag")?.value;
+    const prio = byId("taskPriority")?.value;
 
-    // NEW: Start/End times
-    const startTime = byId("taskStartTime").value; // "HH:MM" or ""
-    const endTime = byId("taskEndTime").value;     // "HH:MM" or ""
+    const startTime = byId("taskStartTime")?.value || "";
+    const endTime = byId("taskEndTime")?.value || "";
 
-    const section = editingTaskId !== null ? tasks.find(t => t.id === editingTaskId)?.section : "To Do";
-    const due = ""; // No due date needed
+    // Read Status from form; default if missing
+    const statusSel = byId("taskStatus");
+    let chosenSection = "To Do";
+    if (statusSel) {
+      chosenSection = statusSel.value; // may be "To Do", "In Progress", "Done"
+    } else if (editingTaskId !== null) {
+      chosenSection = tasks.find((t) => t.id === editingTaskId)?.section || "To Do";
+    }
 
     if (!title) {
       alert("Please enter a task title");
@@ -215,48 +304,45 @@ function initAddTask() {
     }
 
     if (editingTaskId !== null) {
-      // Edit existing task
-      const task = tasks.find(t => t.id === editingTaskId);
+      const task = tasks.find((t) => t.id === editingTaskId);
       if (task) {
         const oldSection = task.section;
+
+        // If a task is completed (Done), we block editing (keep your original rule)
+        if (oldSection === "Done") {
+          alert("Completed tasks cannot be edited.");
+          return;
+        }
+
         task.title = title;
         task.tag = tag;
         task.prio = prio;
-        task.section = section;
-        task.startTime = startTime; // NEW
-        task.endTime = endTime;  
-        saveToSession();   // NEW
+        task.section = chosenSection; // ---- In Progress task status ----
+        task.startTime = startTime;
+        task.endTime = endTime;
+        saveToSession();
 
-        // Re-render task
         const row = document.querySelector(`[data-task-id="${editingTaskId}"]`);
         if (row) {
-          if (oldSection !== section) {
-            // Task moved to different section
+          if (oldSection !== chosenSection) {
+            // Move to another section
             const checkbox = $("input[type='checkbox']", row);
-            const isChecked = checkbox.checked;
+            const isChecked = checkbox?.checked || false;
             row.remove();
 
-            const sections = $$(".task-section");
-            let targetSectionEl = null;
-
-            sections.forEach(sec => {
-              const heading = $("h3", sec);
-              if (heading && heading.textContent.trim() === section) {
-                targetSectionEl = sec;
-              }
-            });
-
+            ensureInProgressSection(); // ensure target exists
+            const targetSectionEl = findSectionByTitle(chosenSection);
             if (targetSectionEl) {
               targetSectionEl.classList.remove("collapsed");
               const header = $(".section-header", targetSectionEl);
               header?.setAttribute("aria-expanded", "true");
 
               const targetTable = $(".task-table", targetSectionEl);
-              const newRow = createTaskRow(task, isChecked);
+              const newRow = createTaskRow(task, chosenSection === "Done" ? true : isChecked);
               targetTable.appendChild(newRow);
             }
           } else {
-            // Same section, just update the row
+            // Update content within the same section
             updateTaskRow(row, task);
           }
         }
@@ -266,56 +352,37 @@ function initAddTask() {
       const newTask = {
         id: taskIdCounter++,
         title: title,
-        due: due,
+        due: "",
         tag: tag,
         prio: prio,
-        section: section,
-        startTime: startTime, // NEW
-        endTime: endTime      // NEW
+        section: chosenSection, // ---- In Progress task status ----
+        previousSection: null,  // --previous section--
+        startTime: startTime,
+        endTime: endTime,
       };
       tasks.push(newTask);
       saveToSession();
 
-      // Add to target section
-      const sections = $$(".task-section");
-      let targetSectionEl = null;
-
-      sections.forEach(sec => {
-        const heading = $("h3", sec);
-        if (heading && heading.textContent.trim() === section) {
-          targetSectionEl = sec;
-        }
-      });
-
+      ensureInProgressSection(); // ensure target exists
+      const targetSectionEl = findSectionByTitle(chosenSection);
       if (targetSectionEl) {
         targetSectionEl.classList.remove("collapsed");
         const header = $(".section-header", targetSectionEl);
         header?.setAttribute("aria-expanded", "true");
 
         const targetTable = $(".task-table", targetSectionEl);
-        const row = createTaskRow(newTask, false);
+        const row = createTaskRow(newTask, chosenSection === "Done");
         targetTable.appendChild(row);
       }
     }
 
     closeForm();
     resetForm();
-    updateProgress(); // UPDATE progress after add/edit
+    updateProgress();
   });
 }
 
-function resetForm() {
-  byId("taskForm").reset();
-  byId("taskTitle").focus();
-  // Clear timeline fields explicitly
-  const start = byId("taskStartTime");
-  const end = byId("taskEndTime");
-  if (start) start.value = "";
-  if (end) end.value = "";
-}
-
 /* ====== TIMELINE HELPERS ====== */
-// Format "HH:MM" (24h) into "5pm", "5:30pm" etc.
 function formatClock12h(hhmm) {
   if (!hhmm) return "";
   const [hStr, mStr] = hhmm.split(":");
@@ -349,7 +416,7 @@ function labelTag(t) {
   t = String(t || "").toLowerCase();
   if (t.startsWith("work")) return "Work";
   if (t.startsWith("health")) return "Health";
-  return t.charAt(0).toUpperCase() + t.slice(1);
+  return t ? t.charAt(0).toUpperCase() + t.slice(1) : "Other";
 }
 function clsPrio(p) {
   p = String(p || "").toLowerCase();
@@ -364,25 +431,33 @@ function labelPrio(p) {
   return "Mid";
 }
 function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, m => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"
+  return String(str).replace(/[&<>"']/g, (m) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#039;",
   }[m]));
 }
 
+/**
+ * Build the inner HTML for a task row.
+ * Shows "▶ In Progress" button ONLY when the task is in "To Do".
+ * ---- In Progress task status ----
+ */
 function buildRowHtml(task, isChecked) {
   const timelineTxt = formatTimelineWindow(task.startTime, task.endTime);
-
-  // Hide Edit button if task is in Done
   const showEdit = task.section !== "Done";
 
   return `
-    <label><input type="checkbox" ${isChecked ? 'checked' : ''}> ${escapeHtml(task.title)}</label>
+    <label><input type="checkbox" ${isChecked ? "checked" : ""}> ${escapeHtml(task.title)}</label>
     <span class="timeline">${timelineTxt ? escapeHtml(timelineTxt) : ""}</span>
     <span class="tag ${clsTag(task.tag)}">${labelTag(task.tag)}</span>
     <span class="priority ${clsPrio(task.prio)}">${labelPrio(task.prio)}</span>
     <div class="task-actions">
-      ${showEdit ? `<button class="edit-btn" title="Edit">Edit</button>` : ``}
-      <button class="delete-btn" title="Delete">Delete</button>
+      ${task.section === "To Do" ? `<button class="inprogress-btn" title="Move to In Progress">▶</button>` : ``}
+      ${showEdit ? `<button class="edit-btn" title="Edit">✏️</button>` : ``}
+      <button class="delete-btn" title="Delete">🗑️</button>
     </div>
   `;
 }
@@ -393,9 +468,11 @@ function createTaskRow(task, isChecked = false) {
   row.setAttribute("data-task-id", task.id);
   row.innerHTML = buildRowHtml(task, isChecked);
   if (isChecked) {
-    const label = $('label', row);
-    label.style.opacity = "0.55";
-    label.style.textDecoration = "line-through";
+    const label = $("label", row);
+    if (label) {
+      label.style.opacity = "0.55";
+      label.style.textDecoration = "line-through";
+    }
   }
   return row;
 }
@@ -405,13 +482,64 @@ function updateTaskRow(row, task) {
   const isChecked = checkbox ? checkbox.checked : false;
   row.innerHTML = buildRowHtml(task, isChecked);
   if (isChecked) {
-    const label = $('label', row);
-    label.style.opacity = "0.55";
-    label.style.textDecoration = "line-through";
+    const label = $("label", row);
+    if (label) {
+      label.style.opacity = "0.55";
+      label.style.textDecoration = "line-through";
+    }
   }
 }
 
-/* ====== CHECKBOX BEHAVIOR (move tasks to Done/To Do) ====== */
+/* ====== SECTION / MOVE HELPERS ====== */
+function findSectionByTitle(title) {
+  let targetSectionEl = null;
+  $$(".task-section").forEach((sec) => {
+    const heading = $("h3", sec);
+    if (heading && heading.textContent.trim() === title) {
+      targetSectionEl = sec;
+    }
+  });
+  return targetSectionEl;
+}
+
+function moveTaskToSection(taskId, task, targetSection, oldRow) {
+  task.section = targetSection; // ---- In Progress task status may be target ----
+  saveToSession();
+
+  // Ensure target section exists (esp. In Progress)
+  ensureInProgressSection();
+
+  const targetSectionEl = findSectionByTitle(targetSection);
+  if (!targetSectionEl) return;
+
+  // Remove from current
+  oldRow?.remove();
+
+  // Open target section if collapsed
+  targetSectionEl.classList.remove("collapsed");
+  const header = $(".section-header", targetSectionEl);
+  header?.setAttribute("aria-expanded", "true");
+
+  // Add to target
+  const targetTable = $(".task-table", targetSectionEl);
+  const newRow = document.createElement("div");
+  newRow.className = "task-row";
+  newRow.setAttribute("data-task-id", taskId);
+  const isChecked = targetSection === "Done";
+  newRow.innerHTML = buildRowHtml(task, isChecked);
+  if (isChecked) {
+    const label = $("label", newRow);
+    if (label) {
+      label.style.opacity = "0.55";
+      label.style.textDecoration = "line-through";
+    }
+  }
+  targetTable.appendChild(newRow);
+
+  updateProgress();
+}
+
+/* ====== CHECKBOX BEHAVIOR (To Do <-> Done) ====== */
 function initCheckboxes() {
   document.addEventListener("change", (e) => {
     if (e.target.matches('.task-row input[type="checkbox"]')) {
@@ -423,57 +551,43 @@ function initCheckboxes() {
       const task = tasks.find(t => t.id === taskId);
       if (!task) return;
 
-      // Update visual appearance
-      label.style.opacity = e.target.checked ? "0.55" : "1";
-      label.style.textDecoration = e.target.checked ? "line-through" : "none";
+      const isChecked = e.target.checked;
 
-      // Move task to Done or back to To Do
-      const targetSection = e.target.checked ? "Done" : "To Do";
-      moveTaskToSection(taskId, task, targetSection, row);
+      // Style
+      label.style.opacity = isChecked ? "0.55" : "1";
+      label.style.textDecoration = isChecked ? "line-through" : "none";
+
+      if (isChecked) {
+        // ➤ MOVING TO DONE → remember previous section
+        task.previousSection = task.section;
+        moveTaskToSection(taskId, task, "Done", row);
+      } else {
+        // ➤ UNCHECKED IN DONE → return to previous section
+        const revertSection = task.previousSection || "To Do";
+        task.previousSection = null;  // clear it
+        moveTaskToSection(taskId, task, revertSection, row);
+      }
     }
   });
 }
 
-function moveTaskToSection(taskId, task, targetSection, oldRow) {
-  // Update task in storage
-  task.section = targetSection;
-saveToSession();
-  // Find target section by heading text
-  const sections = $$(".task-section");
-  let targetSectionEl = null;
+/* ====== "Move to In Progress" BUTTON HANDLER ======
+   Allows quick move from "To Do" -> "In Progress".
+   ---- In Progress task status ----
+===================================================== */
+function initMoveToInProgress() {
+  document.addEventListener("click", (e) => {
+    if (e.target.matches(".inprogress-btn")) {
+      const row = e.target.closest(".task-row");
+      if (!row) return;
 
-  sections.forEach(section => {
-    const heading = $("h3", section);
-    if (heading && heading.textContent.trim() === targetSection) {
-      targetSectionEl = section;
+      const taskId = parseInt(row.getAttribute("data-task-id"));
+      const task = tasks.find((t) => t.id === taskId);
+      if (!task) return;
+
+      moveTaskToSection(taskId, task, "In Progress", row);
     }
   });
-
-  if (!targetSectionEl) return;
-
-  // Remove from current row
-  oldRow.remove();
-
-  // Open target section if collapsed
-  targetSectionEl.classList.remove("collapsed");
-  const header = $(".section-header", targetSectionEl);
-  header?.setAttribute("aria-expanded", "true");
-
-  // Add to target section
-  const targetTable = $(".task-table", targetSectionEl);
-  const newRow = document.createElement("div");
-  newRow.className = "task-row";
-  newRow.setAttribute("data-task-id", taskId);
-  const isChecked = targetSection === "Done";
-  newRow.innerHTML = buildRowHtml(task, isChecked);
-  if (isChecked) {
-    const label = $('label', newRow);
-    label.style.opacity = "0.55";
-    label.style.textDecoration = "line-through";
-  }
-  targetTable.appendChild(newRow);
-
-  updateProgress(); // UPDATE progress after move
 }
 
 /* ====== EDIT TASK ====== */
@@ -484,30 +598,30 @@ function initEditTask() {
       if (!row) return;
 
       const taskId = parseInt(row.getAttribute("data-task-id"));
-      const task = tasks.find(t => t.id === taskId);
+      const task = tasks.find((t) => t.id === taskId);
       if (!task) return;
 
-      // Block edit for completed tasks (extra guard)
       if (task.section === "Done") {
         alert("Completed tasks cannot be edited.");
         return;
       }
 
-      // Populate form with task data
       editingTaskId = taskId;
       byId("taskTitle").value = task.title || "";
       byId("taskTag").value = task.tag || "work";
       byId("taskPriority").value = task.prio || "mid";
-
-      // Timeline fields
       byId("taskStartTime").value = task.startTime || "";
       byId("taskEndTime").value = task.endTime || "";
 
-      // Show form with edit title
+      // Set Status in the form (will include "In Progress")
+      ensureStatusSelectInForm(); // ---- In Progress task status ----
+      const statusSel = byId("taskStatus");
+      if (statusSel) statusSel.value = task.section || "To Do";
+
       const formContainer = byId("addTaskForm");
       const formTitle = byId("formTitle");
-      formTitle.textContent = "Edit Task";
-      formContainer.classList.remove("hidden");
+      if (formTitle) formTitle.textContent = "Edit Task";
+      formContainer?.classList.remove("hidden");
       byId("taskTitle").focus();
     }
   });
@@ -523,33 +637,21 @@ function initDeleteTask() {
       const taskId = parseInt(row.getAttribute("data-task-id"));
       if (!confirm("Are you sure you want to delete this task?")) return;
 
-      // Remove from storage
-      tasks = tasks.filter(t => t.id !== taskId);
+      tasks = tasks.filter((t) => t.id !== taskId);
       saveToSession();
-      // Remove from DOM
       row.remove();
-
-      updateProgress(); // UPDATE progress after delete
+      updateProgress();
     }
   });
 }
 
-// /* ====== DISPLAY TODAY'S DATE ====== */
-// function displayTodayDate() {
-//   const todayDateEl = byId("todayDate");
-//   if (!todayDateEl) return;
-
-//   const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-//   const today = new Date().toLocaleDateString('en-US', options);
-//   todayDateEl.textContent = today;
-// }
 /* ====== DISPLAY TODAY'S DATE ====== */
 function displayTodayDate() {
   const todayDateEl = byId("todayDate");
   if (!todayDateEl) return;
-  
-  const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-  const today = new Date().toLocaleDateString('en-US', options);
+
+  const options = { weekday: "long", year: "numeric", month: "long", day: "numeric" };
+  const today = new Date().toLocaleDateString("en-US", options);
   todayDateEl.textContent = today;
 }
 
@@ -579,14 +681,15 @@ function updateDateDisplay(date) {
 function initDateHeader() {
   updateDateDisplay(new Date());
 }
-/* ====== WEEK STRIP (simple, beginner-friendly) ====== */
-let currentOffset = 0; // days from today; 0 means today
+
+/* ====== WEEK STRIP ====== */
+let currentOffset = 0;
 
 function renderWeekStrip(offset) {
   const strip = document.getElementById("weekStrip");
   if (!strip) return;
   strip.innerHTML = "";
-  // create previous button on the left
+
   const prevBtn = document.createElement("button");
   prevBtn.type = "button";
   prevBtn.id = "prevDay";
@@ -599,7 +702,6 @@ function renderWeekStrip(offset) {
   });
   strip.appendChild(prevBtn);
 
-  // center the strip around the offset (show 7 days: -3..+3)
   for (let i = -3; i <= 3; i++) {
     const dayOffset = offset + i;
     const d = dateWithOffset(dayOffset);
@@ -614,7 +716,6 @@ function renderWeekStrip(offset) {
 
     item.innerHTML = `<span class="wkname">${name}</span><span class="wknum">${num}</span>`;
 
-    // clicking a day selects it (sets new offset and re-renders)
     item.addEventListener("click", () => {
       currentOffset = dayOffset;
       renderWeekStrip(currentOffset);
@@ -624,7 +725,6 @@ function renderWeekStrip(offset) {
     strip.appendChild(item);
   }
 
-  // create next button on the right
   const nextBtn = document.createElement("button");
   nextBtn.type = "button";
   nextBtn.id = "nextDay";
@@ -637,27 +737,64 @@ function renderWeekStrip(offset) {
   });
   strip.appendChild(nextBtn);
 
-  // update the main header too
   updateDateDisplay(dateWithOffset(offset));
 }
 
 function initWeekStrip() {
-  // initial render (today)
   currentOffset = 0;
   renderWeekStrip(currentOffset);
 }
+
+/* ====== RENDER ALL TASKS ====== */
+function renderAllTasks() {
+  // Ensure "In Progress" section exists before rendering
+  ensureInProgressSection(); // ---- In Progress task status ----
+
+  // Clear all section containers
+  const sections = $$(".task-section");
+  sections.forEach((sec) => {
+    const table = $(".task-table", sec);
+    if (table) table.innerHTML = `
+      <div class="task-table-header">
+        <span>Task</span>
+        <span>Timeline</span>
+        <span>Task Tags</span>
+        <span>Priority</span>
+        <span>Actions</span>
+      </div>
+    `;
+  });
+
+  // Re-add tasks into their sections
+  tasks.forEach((task) => {
+    const targetSectionEl = findSectionByTitle(task.section);
+    if (targetSectionEl) {
+      const targetTable = $(".task-table", targetSectionEl);
+      const row = createTaskRow(task, task.section === "Done");
+      targetTable.appendChild(row);
+    }
+  });
+
+  updateProgress();
+}
+
 /* ====== BOOT ====== */
 document.addEventListener("DOMContentLoaded", () => {
   loadInitialTasks();
+  // Ensure UI structure for new status
+  ensureInProgressSection();      // ---- In Progress task status ----
+  ensureStatusSelectInForm();     // ---- In Progress task status ----
+
   displayTodayDate();
   initCollapsibles();
   initViewSwitch();
   initDarkMode();
   initAddTask();
   initCheckboxes();
+  initMoveToInProgress();         // ---- In Progress task status ----
   initEditTask();
   initDeleteTask();
-  updateProgress(); // initial
+  updateProgress();
   initDateHeader();
   initWeekStrip();
   renderAllTasks();
