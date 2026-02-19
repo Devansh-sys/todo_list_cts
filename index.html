@@ -1,61 +1,69 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Document</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<script src="script.js"></script>
-<body>
-  <div class="task-container">
-
-    <!-- Header -->
-    <header class="task-header">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <script src="script.js"></script>
+  <body>
+    <div class="task-container">
+      <!-- Header -->
+      <header class="task-header">
         <h2>My Tasks</h2>
 
         <div class="view-switch">
-            <button class="settings-btn">⚙</button>
-            <button class="add-btn">+</button>
+          <button class="settings-btn">⚙</button>
+          <button class="add-btn">+</button>
         </div>
-    </header>
+      </header>
 
+      <div class="date-header">
+        <div class="date-left">
+          <div class="date-text">
+            <span class="day" id="dateDay">Day</span>
+            <span class="date" id="dateFull">Date</span>
+          </div>
+        </div>
 
-    <!-- To Do Section -->
-    <section class="task-section">
+        <div class="week-strip" id="weekStrip" aria-label="Week selector">
+          <!-- JS will render a 7-day horizontal strip here -->
+        </div>
+      </div>
+
+      <!-- To Do Section -->
+      <section class="task-section">
         <div class="section-header">
-            <h3>To Do</h3>
+          <h3>To Do</h3>
         </div>
 
         <div class="task-table">
-            <div class="task-table-header">
-                <span>Task</span>
-                <span>Due Date</span>
-                <span>Task Tags</span>
-                <span>Priority</span>
-            </div>
+          <div class="task-table-header">
+            <span>Task</span>
+            <span>Due Date</span>
+            <span>Task Tags</span>
+            <span>Priority</span>
+          </div>
 
-            <!-- Task Row -->
-            <div class="task-row">
-                <label><input type="checkbox"> Website Development</label>
-                <span class="due-date">📅 Nov 17</span>
-                <span class="tag work">Work</span>
-                <span class="priority high">High</span>
-            </div>
+          <!-- Task Row -->
+          <div class="task-row">
+            <label><input type="checkbox" /> Website Development</label>
+            <span class="due-date">📅 Nov 17</span>
+            <span class="tag work">Work</span>
+            <span class="priority high">High</span>
+          </div>
 
-            <div class="task-row">
-                <label><input type="checkbox"> Update Contact Form</label>
-                <span class="due-date">📅 Nov 18</span>
-                <span class="tag work">Work</span>
-                <span class="priority mid">Mid</span>
-            </div>
-
+          <div class="task-row">
+            <label><input type="checkbox" /> Update Contact Form</label>
+            <span class="due-date">📅 Nov 18</span>
+            <span class="tag work">Work</span>
+            <span class="priority mid">Mid</span>
+          </div>
         </div>
-    </section>
+      </section>
 
-
-
-    <!-- In Progress Section
+      <!-- In Progress Section
     <section class="task-section">
         <div class="section-header">
             <h3>In Progress</h3>
@@ -86,33 +94,28 @@
         </div>
     </section> -->
 
-
-
-    <!-- Done Section -->
-    <section class="task-section">
+      <!-- Done Section -->
+      <section class="task-section">
         <div class="section-header">
-            <h3>Done</h3>
+          <h3>Done</h3>
         </div>
 
         <div class="task-table">
-            <div class="task-table-header">
-                <span>Task</span>
-                <span>Due Date</span>
-                <span>Task Tags</span>
-                <span>Priority</span>
-            </div>
+          <div class="task-table-header">
+            <span>Task</span>
+            <span>Due Date</span>
+            <span>Task Tags</span>
+            <span>Priority</span>
+          </div>
 
-            <div class="task-row">
-                <label><input type="checkbox"> Visit a dermatologist</label>
-                <span class="due-date">📅 Nov 17</span>
-                <span class="tag health">Health</span>
-                <span class="priority high">High</span>
-            </div>
-
+          <div class="task-row">
+            <label><input type="checkbox" /> Visit a dermatologist</label>
+            <span class="due-date">📅 Nov 17</span>
+            <span class="tag health">Health</span>
+            <span class="priority high">High</span>
+          </div>
         </div>
-    </section>
-
-</div>
-  
-</body>
+      </section>
+    </div>
+  </body>
 </html>
