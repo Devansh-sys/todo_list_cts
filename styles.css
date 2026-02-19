@@ -776,3 +776,34 @@ body {
   color: var(--muted);
   font-weight: 700;
 }
+
+
+
+.task-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.task-footer button {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background .15s ease;
+}
+
+.task-footer button:hover {
+  background: #1d4ed8;
+}
+
+.task-footer span {
+  font-weight: 600;
+  color: var(--muted);
+}
