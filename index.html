@@ -18,7 +18,7 @@
             <button class="settings-btn">🌙 Dark</button>
             <button class="add-btn">Add</button>
         </div>
-    </header>
+      </header>
 
     <!-- Today's Date -->
     <div class="today-date" id="todayDate"></div>
@@ -67,11 +67,23 @@
       </form>
     </div>
 
+      <div class="date-header">
+        <div class="date-left">
+          <div class="date-text">
+            <span class="day" id="dateDay">Day</span>
+            <span class="date" id="dateFull">Date</span>
+          </div>
+        </div>
 
-    <!-- To Do Section -->
-    <section class="task-section">
+        <div class="week-strip" id="weekStrip" aria-label="Week selector">
+          <!-- JS will render a 7-day horizontal strip here -->
+        </div>
+      </div>
+
+      <!-- To Do Section -->
+      <section class="task-section">
         <div class="section-header">
-            <h3>To Do</h3>
+          <h3>To Do</h3>
         </div>
 
         <div class="task-table">
@@ -82,11 +94,9 @@
             <span>Actions</span>
         </div>
         </div>
-    </section>
+      </section>
 
-
-
-    <!-- In Progress Section
+      <!-- In Progress Section
     <section class="task-section">
         <div class="section-header">
             <h3>In Progress</h3>
@@ -117,12 +127,10 @@
         </div>
     </section> -->
 
-
-
-    <!-- Done Section -->
-    <section class="task-section">
+      <!-- Done Section -->
+      <section class="task-section">
         <div class="section-header">
-            <h3>Done</h3>
+          <h3>Done</h3>
         </div>
 
         <div class="task-table">
@@ -133,9 +141,7 @@
                 <span>Actions</span>
             </div>
         </div>
-    </section>
-
-</div>
-  
-</body>
+      </section>
+    </div>
+  </body>
 </html>

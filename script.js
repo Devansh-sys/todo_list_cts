@@ -15,7 +15,7 @@ function loadInitialTasks() {
 
 /* ====== COLLAPSIBLE SECTIONS ====== */
 function initCollapsibles() {
-  $$(".task-section .section-header").forEach(header => {
+  $$(".task-section .section-header").forEach((header) => {
     // Set ARIA
     const section = header.closest(".task-section");
     header.setAttribute("role", "button");
@@ -96,6 +96,7 @@ function initAddTask() {
     displayCurrentDate();
     formTitle.textContent = "Add New Task";
     formContainer.classList.remove("hidden");
+  
   });
 
   // Close form
@@ -277,9 +278,17 @@ function labelPrio(p) {
   return "Mid";
 }
 function escapeHtml(str) {
-  return String(str).replace(/[&<>"']/g, m => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"
-  }[m]));
+  return String(str).replace(
+    /[&<>"']/g,
+    (m) =>
+      ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;",
+      }[m])
+  );
 }
 
 /* ====== CHECKBOX BEHAVIOR (move tasks to Done/To Do) ====== */
@@ -409,10 +418,104 @@ function displayTodayDate() {
   todayDateEl.textContent = today;
 }
 
+/* ====== DATE / DAY HEADER ====== */
+function dateWithOffset(offset) {
+  const d = new Date();
+  d.setDate(d.getDate() + Number(offset));
+  return d;
+}
+
+function updateDateDisplay(date) {
+  const dayEl = document.getElementById("dateDay");
+  const dateEl = document.getElementById("dateFull");
+  if (!dayEl && !dateEl) return;
+
+  const dayStr = date.toLocaleDateString(undefined, { weekday: "long" });
+  const dateStr = date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  if (dayEl) dayEl.textContent = dayStr;
+  if (dateEl) dateEl.textContent = dateStr;
+}
+
+function initDateHeader() {
+  updateDateDisplay(new Date());
+}
+/* ====== WEEK STRIP (simple, beginner-friendly) ====== */
+let currentOffset = 0; // days from today; 0 means today
+
+function renderWeekStrip(offset) {
+  const strip = document.getElementById("weekStrip");
+  if (!strip) return;
+  strip.innerHTML = "";
+  // create previous button on the left
+  const prevBtn = document.createElement("button");
+  prevBtn.type = "button";
+  prevBtn.id = "prevDay";
+  prevBtn.className = "strip-nav prev";
+  prevBtn.setAttribute("aria-label", "Previous day");
+  prevBtn.textContent = "◀";
+  prevBtn.addEventListener("click", () => {
+    currentOffset -= 1;
+    renderWeekStrip(currentOffset);
+  });
+  strip.appendChild(prevBtn);
+
+  // center the strip around the offset (show 7 days: -3..+3)
+  for (let i = -3; i <= 3; i++) {
+    const dayOffset = offset + i;
+    const d = dateWithOffset(dayOffset);
+
+    const item = document.createElement("button");
+    item.className = "week-day" + (i === 0 ? " selected" : "");
+    item.type = "button";
+    item.setAttribute("data-offset", String(dayOffset));
+
+    const name = d.toLocaleDateString(undefined, { weekday: "short" });
+    const num = d.getDate();
+
+    item.innerHTML = `<span class="wkname">${name}</span><span class="wknum">${num}</span>`;
+
+    // clicking a day selects it (sets new offset and re-renders)
+    item.addEventListener("click", () => {
+      currentOffset = dayOffset;
+      renderWeekStrip(currentOffset);
+      updateDateDisplay(dateWithOffset(currentOffset));
+    });
+
+    strip.appendChild(item);
+  }
+
+  // create next button on the right
+  const nextBtn = document.createElement("button");
+  nextBtn.type = "button";
+  nextBtn.id = "nextDay";
+  nextBtn.className = "strip-nav next";
+  nextBtn.setAttribute("aria-label", "Next day");
+  nextBtn.textContent = "▶";
+  nextBtn.addEventListener("click", () => {
+    currentOffset += 1;
+    renderWeekStrip(currentOffset);
+  });
+  strip.appendChild(nextBtn);
+
+  // update the main header too
+  updateDateDisplay(dateWithOffset(offset));
+}
+
+function initWeekStrip() {
+  // initial render (today)
+  currentOffset = 0;
+  renderWeekStrip(currentOffset);
+}
+
 /* ====== BOOT ====== */
 document.addEventListener("DOMContentLoaded", () => {
   loadInitialTasks();
-  displayTodayDate();
+  // displayTodayDate();
   initCollapsibles();
   initViewSwitch();
   initDarkMode();
@@ -420,4 +523,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initCheckboxes();
   initEditTask();
   initDeleteTask();
+
+  initDateHeader();
+  initWeekStrip();
 });
