@@ -1,3 +1,73 @@
+/* ====== SESSION STORAGE KEYS (NEW) ====== */
+const SS_KEYS = {
+  tasks: "tasklist.tasks",
+  counter: "tasklist.counter"
+};
+
+function loadFromSession() { // NEW
+  try {
+    const savedTasks = sessionStorage.getItem(SS_KEYS.tasks);
+    tasks = savedTasks ? JSON.parse(savedTasks) : [];
+
+    // Restore ID counter; if missing, compute from existing tasks
+    const savedCounter = sessionStorage.getItem(SS_KEYS.counter);
+    if (savedCounter !== null) {
+      taskIdCounter = parseInt(savedCounter, 10) || 0;
+    } else {
+      taskIdCounter = tasks.length
+        ? Math.max(...tasks.map(t => Number(t.id) || 0)) + 1
+        : 0;
+    }
+  } catch (err) {
+    console.warn("Failed to load session tasks:", err);
+    tasks = [];
+    taskIdCounter = 0;
+  }
+}
+
+function saveToSession() { // NEW
+  try {
+    sessionStorage.setItem(SS_KEYS.tasks, JSON.stringify(tasks));
+    sessionStorage.setItem(SS_KEYS.counter, String(taskIdCounter));
+  } catch (err) {
+    console.warn("Failed to save session tasks:", err);
+  }
+}
+
+
+/* ====== RENDER ALL TASKS (NEW) ====== */
+function renderAllTasks() {
+  // Clear all section containers
+  const sections = $$(".task-section");
+  sections.forEach(sec => {
+    const table = $(".task-table", sec);
+    if (table) table.innerHTML = "";
+  });
+
+  // Re-add tasks into their sections
+  tasks.forEach(task => {
+    const sections = $$(".task-section");
+    let targetSectionEl = null;
+
+    sections.forEach(sec => {
+      const heading = $("h3", sec);
+      if (heading && heading.textContent.trim() === task.section) {
+        targetSectionEl = sec;
+      }
+    });
+
+    if (targetSectionEl) {
+      const targetTable = $(".task-table", targetSectionEl);
+      const row = createTaskRow(task, task.section === "Done");
+      targetTable.appendChild(row);
+    }
+  });
+
+  updateProgress();
+}
+
+
+
 /* ====== UTILS ====== */
 const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
@@ -9,7 +79,7 @@ let taskIdCounter = 0;
 
 function loadInitialTasks() {
   // No initial tasks - start with empty lists
-  tasks = [];
+   loadFromSession();
 }
 
 /* ====== COLLAPSIBLE SECTIONS ====== */
@@ -154,7 +224,8 @@ function initAddTask() {
         task.prio = prio;
         task.section = section;
         task.startTime = startTime; // NEW
-        task.endTime = endTime;     // NEW
+        task.endTime = endTime;  
+        saveToSession();   // NEW
 
         // Re-render task
         const row = document.querySelector(`[data-task-id="${editingTaskId}"]`);
@@ -203,6 +274,7 @@ function initAddTask() {
         endTime: endTime      // NEW
       };
       tasks.push(newTask);
+      saveToSession();
 
       // Add to target section
       const sections = $$(".task-section");
@@ -365,7 +437,7 @@ function initCheckboxes() {
 function moveTaskToSection(taskId, task, targetSection, oldRow) {
   // Update task in storage
   task.section = targetSection;
-
+saveToSession();
   // Find target section by heading text
   const sections = $$(".task-section");
   let targetSectionEl = null;
@@ -453,7 +525,7 @@ function initDeleteTask() {
 
       // Remove from storage
       tasks = tasks.filter(t => t.id !== taskId);
-
+      saveToSession();
       // Remove from DOM
       row.remove();
 
@@ -588,4 +660,5 @@ document.addEventListener("DOMContentLoaded", () => {
   updateProgress(); // initial
   initDateHeader();
   initWeekStrip();
+  renderAllTasks();
 });
