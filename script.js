@@ -741,7 +741,8 @@ function ensureFilterUIForSection(sectionEl) {
           <option value="low">Low</option>
         </select>
 
-        <button type="button" class="filter-clear-btn" title="Clear">✖</button>
+        <button type="button" class="filter-clear-btn" title="Clear">🧹</button>
+        <button type="button" class="filter-close-btn" title="close filter">❌</button>
       </div>
     `);
     header.insertAdjacentElement("afterend", bar);
@@ -751,6 +752,7 @@ function ensureFilterUIForSection(sectionEl) {
     const tagSel = bar.querySelector(".filter-tag");
     const prioSel = bar.querySelector(".filter-priority");
     const clr = bar.querySelector(".filter-clear-btn");
+    const close = bar.querySelector(".filter-close-btn");
 
     tagSel.value = sectionFilters[title].tag || "all";
     prioSel.value = sectionFilters[title].prio || "all";
@@ -771,6 +773,10 @@ function ensureFilterUIForSection(sectionEl) {
       prioSel.value = "all";
       renderAllTasks();
       updateProgress();
+    });
+
+    close.addEventListener("click", () => {
+      bar.classList.add("hidden");
     });
   }
 }

@@ -277,10 +277,16 @@ body {
   padding: 6px 10px; border-radius: 8px; font-weight: 600; font-size: 12px;
 }
 .filter-clear-btn {
+  margin-left: 5px;
+  appearance: none; border: none; background: transparent; color: var(--muted);
+  cursor: pointer; font-size: 16px; line-height: 1; padding: 4px 6px; border-radius: 6px;
+}
+.filter-close-btn {
   margin-left: auto;
   appearance: none; border: none; background: transparent; color: var(--muted);
   cursor: pointer; font-size: 16px; line-height: 1; padding: 4px 6px; border-radius: 6px;
 }
+.filter-close-btn:hover { background: rgba(148, 163, 184, 0.12); }
 .filter-clear-btn:hover { background: rgba(148, 163, 184, 0.12); }
 
 /* ====== TABLE-ISH LAYOUT ====== */
