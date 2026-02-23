@@ -641,7 +641,7 @@ function renderWeekStrip(offset) {
   prevBtn.type = "button";
   prevBtn.id = "prevDay";
   prevBtn.className = "strip-nav prev";
-  prevBtn.setAttribute("aria-label", "Previous day");
+  // prevBtn.setAttribute("aria-label", "Previous day");
   prevBtn.textContent = "◀";
   prevBtn.addEventListener("click", () => {
     currentOffset -= 1;
