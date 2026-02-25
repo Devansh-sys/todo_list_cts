@@ -309,6 +309,32 @@ if (taskDateInput) {
     if (currentDateEl) currentDateEl.textContent = `Today: ${todayStr}`;
   };
 
+  // Sync end time min value with start time
+  const taskStartTimeInput = byId("taskStartTime");
+  const taskEndTimeInput = byId("taskEndTime");
+  
+  if (taskStartTimeInput && taskEndTimeInput) {
+    taskStartTimeInput.addEventListener("change", () => {
+      if (taskStartTimeInput.value) {
+        taskEndTimeInput.min = taskStartTimeInput.value;
+        // If end time is already set and is before start time, clear it
+        if (taskEndTimeInput.value && taskEndTimeInput.value < taskStartTimeInput.value) {
+          taskEndTimeInput.value = "";
+        }
+      } else {
+        taskEndTimeInput.min = "";
+      }
+    });
+    
+    taskEndTimeInput.addEventListener("change", () => {
+      // Validate that end time is not before start time
+      if (taskStartTimeInput.value && taskEndTimeInput.value && taskEndTimeInput.value < taskStartTimeInput.value) {
+        alert("End time cannot be before start time");
+        taskEndTimeInput.value = "";
+      }
+    });
+  }
+
   addBtn?.addEventListener("click", () => {
     editingTaskId = null;
     resetForm();
@@ -341,6 +367,12 @@ if (taskDateInput) {
 
     if (!title) {
       alert("Please enter a task title");
+      return;
+    }
+
+    // Validate that end time is not before start time
+    if (startTime && endTime && endTime < startTime) {
+      alert("End time cannot be before start time");
       return;
     }
 
