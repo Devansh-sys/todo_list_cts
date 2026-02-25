@@ -825,6 +825,13 @@ function renderAllTasks() {
   const selected = getSelectedDateStr();
   const dayTasks = tasks.filter((t) => t.date === selected);
 
+  // Sort by start time (earliest to latest)
+  dayTasks.sort((a, b) => {
+    const timeA = a.startTime ? parseInt(a.startTime.replace(":", ""), 10) : 2400;
+    const timeB = b.startTime ? parseInt(b.startTime.replace(":", ""), 10) : 2400;
+    return timeA - timeB;
+  });
+
   dayTasks.forEach((task) => {
     if (!taskPassesSectionFilter(task)) return;
     const targetSectionEl = findSectionByTitle(task.section);
@@ -858,6 +865,31 @@ function calculateTotalTime() {
   const txt = totalMinutes > 0 ? `Total time: ${hours}h ${minutes}m` : "No valid timelines";
   if (byId("calcResult")) byId("calcResult").textContent = txt;
 }
+
+
+  //  UTILITY: Update all task dates to today
+
+function updateAllTasksToToday() {
+  const todayStr = isoDate(new Date());
+  let updatedCount = 0;
+  
+  tasks.forEach((task) => {
+    if (task.date !== todayStr) {
+      console.log(`Updating "${task.title}" from ${task.date} to ${todayStr}`);
+      task.date = todayStr;
+      updatedCount++;
+    }
+  });
+  
+  saveToSession();
+  console.log(`✅ Updated ${updatedCount} task(s) to today's date: ${todayStr}`);
+  renderAllTasks();
+  updateProgress();
+  return { updated: updatedCount, todayDate: todayStr };
+}
+
+// Expose function to browser console
+window.updateAllTasksToToday = updateAllTasksToToday;
 
 
 // INITIALIZATION
