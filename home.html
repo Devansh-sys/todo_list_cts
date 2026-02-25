@@ -10,7 +10,6 @@
 <body>
   <div class="task-container">
 
-    <!-- Header -->
     <header class="task-header">
       <h2>My Tasks</h2>
 
@@ -19,7 +18,6 @@
         <button class="add-btn">Add</button>
       </div>
     </header>
-<!-- Progress (slider-like) -->
 <div class="progress-area" id="progressArea">
   <div class="progress-summary">
     <strong id="progressPercent">0%</strong>
@@ -38,7 +36,6 @@
 </div>
     
 
-    <!-- Add/Edit Task Form -->
     <div class="form-container hidden" id="addTaskForm">
       <div class="form-overlay" id="formOverlay"></div>
       <form id="taskForm" class="task-form">
@@ -75,7 +72,7 @@
           </div>
         </div>
 
-        <!-- Timeline fields: Start → End -->
+        
         <div class="form-row">
           <div class="form-group">
             <label for="taskStartTime">Start Time</label>
@@ -87,7 +84,7 @@
           </div>
         </div>
         
-        <!-- task status-->
+       
 
         <div class="form-row">
   <div class="form-group">
@@ -99,7 +96,7 @@
     </select>
   </div>
 </div>
- <!------>
+ 
 
 
         <div class="form-actions">
@@ -118,12 +115,10 @@
         </div>
 
         <div class="week-strip" id="weekStrip" aria-label="Week selector">
-          <!-- JS will render a 7-day horizontal strip here -->
         </div>
       </div>
 
-    <!-- To Do Section -->
-    <!-- To Do Section -->
+  
 <section class="task-section">
   <div class="section-header">
     <h3>To Do</h3>
@@ -139,7 +134,6 @@
     </div>
   </div>
 
-  <!-- Footer for calculation -->
   <div class="task-footer">
     <button id="calcTimeBtn">Calculate</button>
     <span id="calcResult"></span>
@@ -147,7 +141,7 @@
 </section>
 
 
-    <!-- In Progress Section -->
+    
     <section class="task-section">
   <div class="section-header">
     <h3>In Progress</h3>
@@ -167,7 +161,7 @@
 
 
 
-    <!-- Done Section -->
+    
     <section class="task-section">
       <div class="section-header">
         <h3>Done</h3>

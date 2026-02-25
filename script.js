@@ -1,7 +1,7 @@
 "use strict";
 
 
-  //  SESSION STORAGE KEYS
+ 
 
 const SS_KEYS = {
   tasks: "tasklist.tasks",
@@ -9,13 +9,13 @@ const SS_KEYS = {
 };
 
 
-  //  DOM UTILS
+
 
 const $ = (sel, ctx = document) => ctx.querySelector(sel);
 const $$ = (sel, ctx = document) => Array.from(ctx.querySelectorAll(sel));
 const byId = (id) => document.getElementById(id);
 
-// Simple DOM element builder 
+
 function el(tag, className, html) {
   const n = document.createElement(tag);
   if (className) n.className = className;
@@ -24,7 +24,7 @@ function el(tag, className, html) {
 }
 
 
-  //  DATE HELPERS
+  
 
 function startOfDay(d) {
   const nd = new Date(d);
@@ -41,7 +41,7 @@ function isoDate(d) {
 function today() {
   return startOfDay(new Date());
 }
-let currentOffset = 0; // days from today 
+let currentOffset = 0; 
 function dateWithOffset(offset) {
   const d = today();
   d.setDate(d.getDate() + Number(offset));
@@ -51,7 +51,7 @@ function getSelectedDateStr() {
   return isoDate(dateWithOffset(currentOffset));
 }
 
-  //  TASK STATE + STORAGE (sessionStorage)
+ 
 
 let tasks = [];
 let taskIdCounter = 0;
@@ -61,7 +61,7 @@ function loadFromSession() {
     const savedTasks = localStorage.getItem(SS_KEYS.tasks);
     tasks = savedTasks ? JSON.parse(savedTasks) : [];
 
-    //ensuring each task has a date
+   
     const todayStr = isoDate(new Date());
     tasks.forEach((t) => {
       if (!t.date) t.date = todayStr;
@@ -94,8 +94,7 @@ function loadInitialTasks() {
 }
 
   
-  //  - Ensuring the In Progress section exists and sits between To Do and Done.
-  //  - Ensuring Status and Date fields exist in the Add/Edit form.
+  
 
 function ensureInProgressSection() {
   const container = $(".task-container");
@@ -111,13 +110,13 @@ function ensureInProgressSection() {
     if (title === "Done") doneSection = sec;
   });
 
-  // If exists, reorder under To Do
+  
   if (inProgSection) {
     if (toDoSection) toDoSection.insertAdjacentElement("afterend", inProgSection);
     return;
   }
 
-  // Creating the In Progress section
+  
   const sec = el("section", "task-section", `
     <div class="section-header">
       <h3>In Progress</h3>
@@ -186,7 +185,7 @@ function ensureDateInputInForm() {
 }
 
 
-  //  COLLAPSIBLE SECTIONS
+  
 
 function initCollapsibles() {
   $$(".task-section .section-header").forEach((header) => {
@@ -201,7 +200,7 @@ function initCollapsibles() {
     };
 
     header.addEventListener("click", (e) => {
-      if (e.target.closest?.(".filter-toggle-btn")) return; // ignore filter button
+      if (e.target.closest?.(".filter-toggle-btn")) return; 
       toggle();
     });
     header.addEventListener("keydown", (e) => {
@@ -213,14 +212,14 @@ function initCollapsibles() {
   });
 }
 
-  //  VIEW SWITCH (List-only)
+  
 
 function initViewSwitch() {
   $(".task-container")?.classList.remove("board-view");
 }
 
 
-  //  DARK MODE TOGGLE (using  localStorage)
+
 
 function initDarkMode() {
   const btn = $(".view-switch .settings-btn");
@@ -246,7 +245,7 @@ function initDarkMode() {
 }
 
 
-  //  PROGRESS BAR (for selected day only)
+
 
 function updateProgress() {
   const selected = getSelectedDateStr();
@@ -267,7 +266,7 @@ function updateProgress() {
 }
 
 
-  //  ADD/EDIT TASK FORM
+  
 
 let editingTaskId = null;
 
@@ -290,12 +289,12 @@ function initAddTask() {
   const formTitle = byId("formTitle");
   const currentDateEl = byId("currentDate");
 
-  // Ensure new controls exist
+  
   ensureStatusSelectInForm();
   ensureDateInputInForm();
 
   
-// Preventing choosing dates before today
+
 const taskDateInput = byId("taskDate");
 if (taskDateInput) {
   const todayStr = isoDate(new Date());
@@ -309,7 +308,7 @@ if (taskDateInput) {
     if (currentDateEl) currentDateEl.textContent = `Today: ${todayStr}`;
   };
 
-  // Sync end time min value with start time
+  
   const taskStartTimeInput = byId("taskStartTime");
   const taskEndTimeInput = byId("taskEndTime");
   
@@ -317,7 +316,7 @@ if (taskDateInput) {
     taskStartTimeInput.addEventListener("change", () => {
       if (taskStartTimeInput.value) {
         taskEndTimeInput.min = taskStartTimeInput.value;
-        // If end time is already set and is before start time, clear it
+        
         if (taskEndTimeInput.value && taskEndTimeInput.value < taskStartTimeInput.value) {
           taskEndTimeInput.value = "";
         }
@@ -327,7 +326,7 @@ if (taskDateInput) {
     });
     
     taskEndTimeInput.addEventListener("change", () => {
-      // Validate that end time is not before start time
+      
       if (taskStartTimeInput.value && taskEndTimeInput.value && taskEndTimeInput.value < taskStartTimeInput.value) {
         alert("End time cannot be before start time");
         taskEndTimeInput.value = "";
@@ -370,7 +369,7 @@ if (taskDateInput) {
       return;
     }
 
-    // Validate that end time is not before start time
+    
     if (startTime && endTime && endTime < startTime) {
       alert("End time cannot be before start time");
       return;
@@ -385,7 +384,7 @@ if (taskDateInput) {
           return;
         }
         if (oldSection !== "Done" && chosenSection === "Done") {
-          task.previousSection = oldSection; // save for revert
+          task.previousSection = oldSection; 
         }
 
         task.title = title;
@@ -422,7 +421,7 @@ if (taskDateInput) {
 }
 
 
-  //  TIMELINE FORMATTERS (12h clock)
+ 
 
 function formatClock12h(hhmm) {
   if (!hhmm) return "";
@@ -444,7 +443,7 @@ function formatTimelineWindow(startTime, endTime) {
 }
 
 
-  //  RENDER HELPERS(row/class/labels)
+ 
 
 function clsTag(t) {
   t = String(t || "").toLowerCase();
@@ -480,7 +479,7 @@ function escapeHtml(str) {
   }[m]));
 }
 
-/* Build task row HTML */
+
 function buildRowHtml(task) {
   const isChecked = task.section === "Done";
   const timelineTxt = formatTimelineWindow(task.startTime, task.endTime);
@@ -510,7 +509,6 @@ function createTaskRow(task) {
 }
 
 
-  //  MOVE / SECTION HELPERS
 
 function findSectionByTitle(title) {
   let target = null;
@@ -528,7 +526,7 @@ function moveTaskToSection(taskId, task, targetSection) {
 }
 
 
-  //  CHECKBOX BEHAVIOR (moving from To Do/In Progress to Done)
+  
 
 function initCheckboxes() {
   document.addEventListener("change", (e) => {
@@ -547,7 +545,7 @@ function initCheckboxes() {
     label.style.textDecoration = isChecked ? "line-through" : "none";
 
     if (isChecked) {
-      task.previousSection = task.section; // remember for revert
+      task.previousSection = task.section; 
       moveTaskToSection(taskId, task, "Done");
     } else {
       if (task.section === "Done") {
@@ -563,7 +561,7 @@ function initCheckboxes() {
 }
 
 
-  // move task from "To Do" to "In Progress"
+  
 
 function initMoveToInProgress() {
   document.addEventListener("click", (e) => {
@@ -581,7 +579,7 @@ function initMoveToInProgress() {
 }
 
 
-  //  EDIT TASK
+  
 
 function initEditTask() {
   document.addEventListener("click", (e) => {
@@ -621,7 +619,7 @@ function initEditTask() {
 }
 
 
-  //  DELETE TASK
+  
 
 function initDeleteTask() {
   document.addEventListener("click", (e) => {
@@ -640,7 +638,7 @@ function initDeleteTask() {
   });
 }
 
-  // Displaying Today's Date
+  
 
 function displayTodayDate() {
   const el = byId("todayDate");
@@ -650,7 +648,7 @@ function displayTodayDate() {
 }
 
 
-  //  DATE HEADER TEXT (day name + full date)
+  
 
 function updateDateDisplay(date) {
   const dayEl = byId("dateDay");
@@ -662,7 +660,7 @@ function updateDateDisplay(date) {
 }
 
 
-  //  WEEK STRIP 
+   
 
 function renderWeekStrip(offset) {
   const strip = byId("weekStrip");
@@ -673,7 +671,7 @@ function renderWeekStrip(offset) {
   prevBtn.type = "button";
   prevBtn.id = "prevDay";
   prevBtn.className = "strip-nav prev";
-  // prevBtn.setAttribute("aria-label", "Previous day");
+  
   prevBtn.textContent = "◀";
   prevBtn.addEventListener("click", () => {
     currentOffset -= 1;
@@ -719,15 +717,13 @@ function renderWeekStrip(offset) {
   updateDateDisplay(dateWithOffset(offset));
 }
 function initWeekStrip() {
-  currentOffset = 0; // today
+  currentOffset = 0; 
   renderWeekStrip(currentOffset);
 }
 
 
-  //  SECTION FILTERS (per-section, per selected date)
-  //  - Toggle mini bar with Tag + Priority + Clear.
 
-const sectionFilters = {}; // e.g. { "To Do": { tag:"all", prio:"all" }, ... }
+const sectionFilters = {}; 
 const defaultFilterState = () => ({ tag: "all", prio: "all" });
 
 function getSectionTitle(sectionEl) {
@@ -740,20 +736,20 @@ function ensureFilterUIForSection(sectionEl) {
   const header = $(".section-header", sectionEl);
   if (!header) return;
 
-  // Toggle button
+  
   if (!header.querySelector(".filter-toggle-btn")) {
     const btn = el("button", "filter-toggle-btn", "🔎Filter");
     btn.type = "button";
     btn.title = "Filter by tag & priority";
     header.appendChild(btn);
     btn.addEventListener("click", (e) => {
-      e.stopPropagation(); // don't collapse section
+      e.stopPropagation(); 
       const bar = sectionEl.querySelector(".section-filters");
       if (bar) bar.classList.toggle("hidden");
     });
   }
 
-  // creating Filter bar 
+ 
   if (!sectionEl.querySelector(".section-filters")) {
     const bar = el("div", "section-filters hidden", `
       <div class="filter-row">
@@ -816,7 +812,6 @@ function initSectionFilters() {
   $$(".task-section").forEach(ensureFilterUIForSection);
 }
 
-/* Checking if a task is applicable to its section's active filters */
 function taskPassesSectionFilter(task) {
   const f = sectionFilters[task.section] || defaultFilterState();
 
@@ -832,13 +827,11 @@ function taskPassesSectionFilter(task) {
 }
 
 
-  //  RENDER ALL TASKS (for selected date )
 
 function renderAllTasks() {
   ensureInProgressSection();
   initSectionFilters();
 
-  // Reset table headers in each section
   $$(".task-section").forEach((sec) => {
     const table = $(".task-table", sec);
     if (table) {
@@ -857,7 +850,6 @@ function renderAllTasks() {
   const selected = getSelectedDateStr();
   const dayTasks = tasks.filter((t) => t.date === selected);
 
-  // Sort by start time (earliest to latest)
   dayTasks.sort((a, b) => {
     const timeA = a.startTime ? parseInt(a.startTime.replace(":", ""), 10) : 2400;
     const timeB = b.startTime ? parseInt(b.startTime.replace(":", ""), 10) : 2400;
@@ -875,7 +867,6 @@ function renderAllTasks() {
 }
 
 
-  //  TOTAL TIME CALC (To Do only, for selected day)
 
 function calculateTotalTime() {
   const selected = getSelectedDateStr();
@@ -899,7 +890,6 @@ function calculateTotalTime() {
 }
 
 
-  //  UTILITY: Update all task dates to today
 
 function updateAllTasksToToday() {
   const todayStr = isoDate(new Date());
@@ -920,11 +910,9 @@ function updateAllTasksToToday() {
   return { updated: updatedCount, todayDate: todayStr };
 }
 
-// Expose function to browser console
 window.updateAllTasksToToday = updateAllTasksToToday;
 
 
-// INITIALIZATION
 document.addEventListener("DOMContentLoaded", () => {
   const calcBtn = byId("calcTimeBtn");
   if (calcBtn) calcBtn.addEventListener("click", calculateTotalTime);
