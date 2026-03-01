@@ -165,9 +165,19 @@ function ensureStatusSelectInForm() {
   }
 }
 
+/**
+ * Ensures a date input field is present in the task form.
+ * If the date input doesn't exist, creates and inserts it into the form.
+ * The date input is inserted before the timeline row (if present) or before
+ * the form actions section. The date field is marked as required.
+ *
+ * @function ensureDateInputInForm
+ * @returns {void}
+ */
 function ensureDateInputInForm() {
   const form = byId("taskForm");
   if (!form || byId("taskDate")) return;
+
 
   const wrapper = el("div", "form-row", `
     <div class="form-group">
